@@ -66,13 +66,15 @@ export async function GET() {
     </url>`;
   });
 
-  const tagUrls = tags.map(
-    (tag) => `<url>
-      <loc>${siteUrl}/tag/${escapeXml(tag.slug)}</loc>
-      <changefreq>weekly</changefreq>
-      <priority>0.6</priority>
-    </url>`
-  );
+  const tagUrls = tags
+    .filter((tag) => (tag.post_count ?? 0) > 0)
+    .map(
+      (tag) => `<url>
+        <loc>${siteUrl}/tag/${escapeXml(tag.slug)}</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+      </url>`
+    );
 
   const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"

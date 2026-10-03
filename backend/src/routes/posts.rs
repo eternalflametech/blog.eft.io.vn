@@ -268,11 +268,12 @@ pub async fn list_tags(
     use serde::Serialize;
 
     let tags: Vec<TagWithCount> = sqlx::query_as(
-        r#"SELECT t.id, t.name, t.slug, COUNT(pt.post_id) as post_count 
+        r#"SELECT t.id, t.name, t.slug, COUNT(p.id) as post_count 
            FROM tags t 
-           LEFT JOIN post_tags pt ON t.id = pt.tag_id 
-           LEFT JOIN posts p ON pt.post_id = p.id AND p.status = 'published' 
+           JOIN post_tags pt ON t.id = pt.tag_id 
+           JOIN posts p ON pt.post_id = p.id AND p.status = 'published' 
            GROUP BY t.id, t.name, t.slug 
+           HAVING COUNT(p.id) > 0
            ORDER BY post_count DESC, t.name ASC"#
     )
     .fetch_all(&state.pool)
