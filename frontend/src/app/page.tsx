@@ -93,7 +93,7 @@ export default async function HomePage() {
       {/* Main Content Area */}
       <div id="articles" className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
         {/* Tags filter bar */}
-        {tags.length > 0 && (
+        {tags.filter((t) => (t.post_count ?? 0) > 0).length > 0 && (
           <div className="mb-10 flex flex-wrap items-center gap-2 border-b border-zinc-900 pb-6">
             <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 mr-2">
               Chủ đề:
@@ -104,15 +104,17 @@ export default async function HomePage() {
             >
               Tất cả
             </Link>
-            {tags.map((tag) => (
-              <Link
-                key={tag.id}
-                href={`/tag/${tag.slug}`}
-                className="rounded-full border border-zinc-850 bg-zinc-900 px-3 py-1 text-xs font-medium text-zinc-400 hover:border-violet-500/40 hover:text-white transition-colors"
-              >
-                #{tag.name} {tag.post_count ? `(${tag.post_count})` : ''}
-              </Link>
-            ))}
+            {tags
+              .filter((t) => (t.post_count ?? 0) > 0)
+              .map((tag) => (
+                <Link
+                  key={tag.id}
+                  href={`/tag/${tag.slug}`}
+                  className="rounded-full border border-zinc-850 bg-zinc-900 px-3 py-1 text-xs font-medium text-zinc-400 hover:border-violet-500/40 hover:text-white transition-colors"
+                >
+                  #{tag.name} ({tag.post_count})
+                </Link>
+              ))}
           </div>
         )}
 
