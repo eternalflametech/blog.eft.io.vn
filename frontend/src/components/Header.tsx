@@ -19,7 +19,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Trang chủ', href: '/' },
   { label: 'Bài viết', href: '/#articles' },
-  { label: 'Về CLB', href: '/#about' },
   { label: 'Cổng EFT', href: 'https://eft.io.vn', isExternal: true },
   { label: 'RSS', href: '/feed.xml', isExternal: true },
 ];
