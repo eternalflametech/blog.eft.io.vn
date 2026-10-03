@@ -13,22 +13,23 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-    auth::middleware::RequireAdmin,
+    auth::{hash_password, RequireAdmin, RequireAuth, RequireEditor},
     cache::invalidate_pattern,
     error::AppError,
     models::{
-        Asset, CreatePostRequest, Post, PostListItem, PostWithDetails, Tag, UpdatePostRequest,
+        Asset, CreatePostRequest, CreateUserRequest, Post, PostListItem, PostWithDetails, Tag,
+        UpdatePostRequest, UpdateUserRequest, User, UserResponse,
     },
     services::generate_slug,
     state::SharedState,
 };
 
 // Logic: Lists all posts (both drafts and published) for administration view.
-// Input: SharedState and RequireAdmin extractor.
+// Input: SharedState and RequireAuth extractor.
 // Output: JSON array of PostListItem.
 pub async fn admin_list_posts(
     State(state): State<SharedState>,
-    RequireAdmin(_admin): RequireAdmin,
+    RequireAuth(_user): RequireAuth,
 ) -> Result<impl IntoResponse, AppError> {
     #[derive(sqlx::FromRow)]
     struct AdminPostRow {
@@ -106,11 +107,11 @@ pub async fn admin_list_posts(
 }
 
 // Logic: Fetches a single post by ID for administration editing.
-// Input: SharedState, RequireAdmin extractor, Path UUID.
+// Input: SharedState, RequireAuth extractor, Path UUID.
 // Output: PostWithDetails JSON.
 pub async fn admin_get_post(
     State(state): State<SharedState>,
-    RequireAdmin(_admin): RequireAdmin,
+    RequireAuth(_user): RequireAuth,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     #[derive(sqlx::FromRow)]
@@ -169,11 +170,11 @@ pub async fn admin_get_post(
 }
 
 // Logic: Creates a new post in transaction, inserts associated tags, and invalidates cache.
-// Input: SharedState, RequireAdmin extractor, CreatePostRequest JSON.
+// Input: SharedState, RequireAuth extractor, CreatePostRequest JSON.
 // Output: HTTP 201 Created with PostWithDetails.
 pub async fn admin_create_post(
     State(state): State<SharedState>,
-    RequireAdmin(admin): RequireAdmin,
+    RequireAuth(user): RequireAuth,
     Json(payload): Json<CreatePostRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let mut tx = state.pool.begin().await?;
@@ -199,7 +200,11 @@ pub async fn admin_create_post(
         slug = format!("{initial_slug}-{suffix}");
     }
 
-    let status = payload.status.unwrap_or_else(|| "draft".to_string());
+    let status = if user.role == "author" {
+        "draft".to_string()
+    } else {
+        payload.status.unwrap_or_else(|| "draft".to_string())
+    };
     let published_at = if status == "published" {
         Some(Utc::now())
     } else {
@@ -218,7 +223,7 @@ pub async fn admin_create_post(
     .bind(payload.cover_image)
     .bind(&status)
     .bind(published_at)
-    .bind(admin.id)
+    .bind(user.id)
     .execute(&mut *tx)
     .await?;
 
@@ -271,8 +276,8 @@ pub async fn admin_create_post(
         cover_image: None,
         status,
         published_at,
-        author_id: admin.id,
-        author_name: admin.name,
+        author_id: user.id,
+        author_name: user.name,
         tags: attached_tags,
         created_at: Utc::now(),
         updated_at: Utc::now(),
@@ -282,11 +287,11 @@ pub async fn admin_create_post(
 }
 
 // Logic: Updates an existing post and associated tags in transaction.
-// Input: SharedState, RequireAdmin extractor, Path UUID, UpdatePostRequest JSON.
+// Input: SharedState, RequireAuth extractor, Path UUID, UpdatePostRequest JSON.
 // Output: HTTP 200 OK with updated PostWithDetails.
 pub async fn admin_update_post(
     State(state): State<SharedState>,
-    RequireAdmin(admin): RequireAdmin,
+    RequireAuth(user): RequireAuth,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdatePostRequest>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -300,11 +305,19 @@ pub async fn admin_update_post(
     .await?
     .ok_or_else(|| AppError::NotFound("Không tìm thấy bài viết".to_string()))?;
 
+    if user.role == "author" && existing.author_id != user.id {
+        return Err(AppError::Forbidden("Tác giả chỉ có quyền chỉnh sửa bài viết của chính mình".to_string()));
+    }
+
     let new_title = payload.title.unwrap_or(existing.title);
     let new_content = payload.content.unwrap_or(existing.content);
     let new_excerpt = payload.excerpt.unwrap_or(existing.excerpt);
     let new_cover_image = payload.cover_image.or(existing.cover_image);
-    let new_status = payload.status.unwrap_or(existing.status);
+    let new_status = if user.role == "author" {
+        "draft".to_string()
+    } else {
+        payload.status.unwrap_or(existing.status)
+    };
 
     let new_slug = if let Some(s) = payload.slug {
         generate_slug(&s)
@@ -383,6 +396,11 @@ pub async fn admin_update_post(
         .await?;
     }
 
+    let (author_name,): (String,) = sqlx::query_as("SELECT name FROM users WHERE id = $1")
+        .bind(existing.author_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
     tx.commit().await?;
 
     // Invalidate Redis caches
@@ -400,8 +418,8 @@ pub async fn admin_update_post(
         cover_image: new_cover_image,
         status: new_status,
         published_at: new_published_at,
-        author_id: admin.id,
-        author_name: admin.name,
+        author_id: existing.author_id,
+        author_name,
         tags: attached_tags,
         created_at: existing.created_at,
         updated_at: Utc::now(),
@@ -409,19 +427,23 @@ pub async fn admin_update_post(
 }
 
 // Logic: Deletes a post by ID and purges Redis cache.
-// Input: SharedState, RequireAdmin extractor, Path UUID.
+// Input: SharedState, RequireAuth extractor, Path UUID.
 // Output: HTTP 200 OK deletion confirmation.
 pub async fn admin_delete_post(
     State(state): State<SharedState>,
-    RequireAdmin(_admin): RequireAdmin,
+    RequireAuth(user): RequireAuth,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
-    let post: Option<(String,)> = sqlx::query_as("SELECT slug FROM posts WHERE id = $1")
+    let post: Option<(String, Uuid)> = sqlx::query_as("SELECT slug, author_id FROM posts WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.pool)
         .await?;
 
-    let post = post.ok_or_else(|| AppError::NotFound("Không tìm thấy bài viết".to_string()))?;
+    let (slug, author_id) = post.ok_or_else(|| AppError::NotFound("Không tìm thấy bài viết".to_string()))?;
+
+    if user.role == "author" && author_id != user.id {
+        return Err(AppError::Forbidden("Tác giả chỉ có quyền xóa bài viết của chính mình".to_string()));
+    }
 
     sqlx::query("DELETE FROM posts WHERE id = $1")
         .bind(id)
@@ -430,17 +452,17 @@ pub async fn admin_delete_post(
 
     let mut redis = state.redis.clone();
     let _ = invalidate_pattern(&mut redis, "cache:posts:*").await;
-    let _ = invalidate_pattern(&mut redis, &format!("cache:post:{}", post.0)).await;
+    let _ = invalidate_pattern(&mut redis, &format!("cache:post:{}", slug)).await;
 
     Ok(Json(json!({ "success": true, "message": "Đã xóa bài viết thành công" })))
 }
 
 // Logic: Instant publication shortcut for draft posts.
-// Input: SharedState, RequireAdmin extractor, Path UUID.
+// Input: SharedState, RequireEditor extractor, Path UUID.
 // Output: HTTP 200 OK confirmation.
 pub async fn admin_publish_post(
     State(state): State<SharedState>,
-    RequireAdmin(_admin): RequireAdmin,
+    RequireEditor(_editor): RequireEditor,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
     let result = sqlx::query(
@@ -461,11 +483,11 @@ pub async fn admin_publish_post(
 }
 
 // Logic: Lists all uploaded assets with pagination for media management.
-// Input: SharedState and RequireAdmin extractor.
+// Input: SharedState and RequireAuth extractor.
 // Output: JSON array of Asset objects.
 pub async fn admin_list_assets(
     State(state): State<SharedState>,
-    RequireAdmin(_admin): RequireAdmin,
+    RequireAuth(_user): RequireAuth,
 ) -> Result<impl IntoResponse, AppError> {
     let assets: Vec<Asset> = sqlx::query_as(
         "SELECT id, sha256, filename, mime_type, size_bytes, storage_path, uploaded_by, created_at FROM assets ORDER BY created_at DESC LIMIT 100"
@@ -474,4 +496,187 @@ pub async fn admin_list_assets(
     .await?;
 
     Ok(Json(json!({ "success": true, "assets": assets })))
+}
+
+// Logic: Lists all user accounts with their assigned roles.
+// Input: SharedState and RequireAdmin extractor.
+// Output: JSON array of UserResponse objects.
+pub async fn admin_list_users(
+    State(state): State<SharedState>,
+    RequireAdmin(_admin): RequireAdmin,
+) -> Result<impl IntoResponse, AppError> {
+    let users: Vec<User> = sqlx::query_as(
+        "SELECT id, email, password_hash, name, role, created_at, updated_at FROM users ORDER BY created_at ASC"
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    let responses: Vec<UserResponse> = users.into_iter().map(Into::into).collect();
+    Ok(Json(json!({ "success": true, "users": responses })))
+}
+
+// Logic: Provisions a new user account with distinct role permissions (Admin, Editor, Author).
+// Input: SharedState, RequireAdmin extractor, CreateUserRequest JSON.
+// Output: HTTP 201 Created with UserResponse.
+pub async fn admin_create_user(
+    State(state): State<SharedState>,
+    RequireAdmin(_admin): RequireAdmin,
+    Json(payload): Json<CreateUserRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if payload.email.trim().is_empty() || payload.password.len() < 8 || payload.name.trim().is_empty() {
+        return Err(AppError::BadRequest("Thông tin tài khoản không hợp lệ. Mật khẩu phải từ 8 ký tự trở lên.".to_string()));
+    }
+
+    let role = match payload.role.as_str() {
+        "admin" | "editor" | "author" => payload.role,
+        _ => return Err(AppError::BadRequest("Vai trò không hợp lệ. Chỉ chấp nhận: admin, editor, author".to_string())),
+    };
+
+    let existing: Option<(Uuid,)> = sqlx::query_as("SELECT id FROM users WHERE email = $1")
+        .bind(&payload.email)
+        .fetch_optional(&state.pool)
+        .await?;
+
+    if existing.is_some() {
+        return Err(AppError::BadRequest("Email này đã được sử dụng".to_string()));
+    }
+
+    let password_hash = hash_password(&payload.password)?;
+
+    let user: User = sqlx::query_as(
+        r#"INSERT INTO users (email, password_hash, name, role, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING id, email, password_hash, name, role, created_at, updated_at"#
+    )
+    .bind(&payload.email)
+    .bind(&password_hash)
+    .bind(&payload.name)
+    .bind(&role)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok((StatusCode::CREATED, Json(json!({ "success": true, "user": UserResponse::from(user) }))))
+}
+
+// Logic: Updates user account credentials, name, or role.
+// Input: SharedState, RequireAdmin extractor, Path UUID, UpdateUserRequest JSON.
+// Output: HTTP 200 OK with updated UserResponse.
+pub async fn admin_update_user(
+    State(state): State<SharedState>,
+    RequireAdmin(admin): RequireAdmin,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdateUserRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let existing: Option<User> = sqlx::query_as(
+        "SELECT id, email, password_hash, name, role, created_at, updated_at FROM users WHERE id = $1"
+    )
+    .bind(id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let existing = existing.ok_or_else(|| AppError::NotFound("Không tìm thấy tài khoản".to_string()))?;
+
+    let new_name = payload.name.unwrap_or(existing.name);
+    let new_email = payload.email.unwrap_or(existing.email);
+    let new_role = match payload.role {
+        Some(r) => match r.as_str() {
+            "admin" | "editor" | "author" => {
+                if existing.id == admin.id && r != "admin" {
+                    return Err(AppError::BadRequest("Không thể tự hạ quyền quản trị viên của chính mình".to_string()));
+                }
+                r.to_string()
+            }
+            _ => return Err(AppError::BadRequest("Vai trò không hợp lệ. Chỉ chấp nhận: admin, editor, author".to_string())),
+        },
+        None => existing.role,
+    };
+
+    let new_password_hash = match payload.password {
+        Some(pw) if !pw.trim().is_empty() => {
+            if pw.len() < 8 {
+                return Err(AppError::BadRequest("Mật khẩu mới phải từ 8 ký tự trở lên".to_string()));
+            }
+            hash_password(&pw)?
+        }
+        _ => existing.password_hash,
+    };
+
+    let updated: User = sqlx::query_as(
+        r#"UPDATE users 
+           SET name = $1, email = $2, role = $3, password_hash = $4, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5
+           RETURNING id, email, password_hash, name, role, created_at, updated_at"#
+    )
+    .bind(&new_name)
+    .bind(&new_email)
+    .bind(&new_role)
+    .bind(&new_password_hash)
+    .bind(id)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok(Json(json!({ "success": true, "user": UserResponse::from(updated) })))
+}
+
+// Logic: Deletes a user account with safeguard against self-deletion.
+// Input: SharedState, RequireAdmin extractor, Path UUID.
+// Output: HTTP 200 OK deletion confirmation.
+pub async fn admin_delete_user(
+    State(state): State<SharedState>,
+    RequireAdmin(admin): RequireAdmin,
+    Path(id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    if id == admin.id {
+        return Err(AppError::BadRequest("Không thể tự xóa tài khoản đang đăng nhập của chính bạn".to_string()));
+    }
+
+    let result = sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(id)
+        .execute(&state.pool)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Không tìm thấy tài khoản để xóa".to_string()));
+    }
+
+    Ok(Json(json!({ "success": true, "message": "Đã xóa tài khoản thành công" })))
+}
+
+// Logic: Aggregates dashboard system statistics.
+// Input: SharedState and RequireAuth extractor.
+// Output: JSON object with total counts of posts, drafts, users, and assets.
+pub async fn admin_get_stats(
+    State(state): State<SharedState>,
+    RequireAuth(_user): RequireAuth,
+) -> Result<impl IntoResponse, AppError> {
+    let (total_posts,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM posts")
+        .fetch_one(&state.pool)
+        .await?;
+
+    let (published_posts,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM posts WHERE status = 'published'")
+        .fetch_one(&state.pool)
+        .await?;
+
+    let (draft_posts,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM posts WHERE status = 'draft'")
+        .fetch_one(&state.pool)
+        .await?;
+
+    let (total_users,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&state.pool)
+        .await?;
+
+    let (total_assets,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM assets")
+        .fetch_one(&state.pool)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "stats": {
+            "total_posts": total_posts,
+            "published_posts": published_posts,
+            "draft_posts": draft_posts,
+            "total_users": total_users,
+            "total_assets": total_assets
+        }
+    })))
 }

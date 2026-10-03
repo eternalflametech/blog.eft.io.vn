@@ -5,7 +5,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { marked } from 'marked';
+import { Marked } from 'marked';
+import markedKatex from 'marked-katex-extension';
+
+const markedInstance = new Marked();
+markedInstance.use(
+  markedKatex({
+    throwOnError: false,
+    nonStandard: true,
+  })
+);
 
 // Logic: Basic HTML sanitizer stripping dangerous tags and inline scripts.
 // Input: Raw HTML string.
@@ -26,7 +35,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
 
   const htmlContent = useMemo(() => {
     try {
-      const rawHtml = marked.parse(content, {
+      const rawHtml = markedInstance.parse(content, {
         gfm: true,
         breaks: true,
       }) as string;

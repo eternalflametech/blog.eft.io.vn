@@ -3,12 +3,15 @@
 // Output: Strongly-typed response models or descriptive Error rejections.
 
 import {
+  AdminStats,
   Asset,
   AssetUploadResponse,
+  CreateUserData,
   PaginatedPosts,
   PostListItem,
   PostWithDetails,
   Tag,
+  UpdateUserData,
   User,
 } from './types';
 
@@ -271,4 +274,105 @@ export async function adminGetAssets(): Promise<Asset[]> {
 
   const data = await res.json();
   return data.assets || [];
+}
+
+// Logic: Fetches the currently authenticated user's profile.
+// Input: None.
+// Output: User object or null if unauthenticated.
+export async function authGetMe(): Promise<User | null> {
+  try {
+    const res = await fetch('/api/v2/auth/me', {
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user || null;
+  } catch {
+    return null;
+  }
+}
+
+// Logic: Retrieves aggregate system dashboard statistics.
+// Input: None.
+// Output: AdminStats object.
+export async function adminGetStats(): Promise<AdminStats> {
+  const res = await fetch('/api/v2/admin/stats', {
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error('Lỗi tải dữ liệu thống kê');
+  }
+
+  const data = await res.json();
+  return data.stats;
+}
+
+// Logic: Lists all user accounts with roles.
+// Input: None.
+// Output: Array of User objects.
+export async function adminGetUsers(): Promise<User[]> {
+  const res = await fetch('/api/v2/admin/users', {
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error('Lỗi tải danh sách tài khoản');
+  }
+
+  const data = await res.json();
+  return data.users || [];
+}
+
+// Logic: Provisions a new user account with distinct role permissions.
+// Input: CreateUserData payload.
+// Output: Created User object.
+export async function adminCreateUser(payload: CreateUserData): Promise<User> {
+  const res = await fetch('/api/v2/admin/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Lỗi khởi tạo tài khoản');
+  }
+
+  return data.user;
+}
+
+// Logic: Updates an existing user account's name, email, role, or password.
+// Input: User UUID and UpdateUserData payload.
+// Output: Updated User object.
+export async function adminUpdateUser(id: string, payload: UpdateUserData): Promise<User> {
+  const res = await fetch(`/api/v2/admin/users/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Lỗi cập nhật tài khoản');
+  }
+
+  return data.user;
+}
+
+// Logic: Deletes a user account.
+// Input: User UUID.
+// Output: Void.
+export async function adminDeleteUser(id: string): Promise<void> {
+  const res = await fetch(`/api/v2/admin/users/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Lỗi xóa tài khoản');
+  }
 }

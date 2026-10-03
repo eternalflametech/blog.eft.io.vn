@@ -22,6 +22,7 @@ import {
   Quote,
   Save,
   Send,
+  Sigma,
   Table,
 } from 'lucide-react';
 import { adminCreatePost, adminUpdatePost, uploadAsset } from '@/lib/api';
@@ -439,6 +440,13 @@ export default function MarkdownEditor({ initialPost }: MarkdownEditorProps) {
             className="p-1.5 rounded hover:bg-zinc-800 text-zinc-300 hover:text-white"
           >
             <Table className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => insertText('$$\n', '\n$$')}
+            title="Công thức toán học LaTeX ($$...$$)"
+            className="p-1.5 rounded hover:bg-zinc-800 text-zinc-300 hover:text-white"
+          >
+            <Sigma className="h-4 w-4" />
           </button>
           <span className="h-4 w-[1px] bg-zinc-800 mx-1" />
           <button
