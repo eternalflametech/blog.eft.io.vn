@@ -1,0 +1,111 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: eft-frontend:production
+    container_name: eft-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - INTERNAL_BACKEND_URL=http://backend:8080
+      - NEXT_PUBLIC_SITE_NAME=${NEXT_PUBLIC_SITE_NAME:-Eternal Flame Tech Blog}
+      - NEXT_PUBLIC_SITE_DESCRIPTION=${NEXT_PUBLIC_SITE_DESCRIPTION:-AI & Robotics Club of Nguyen Thi Minh Khai High School}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - eft-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/v2/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: eft-backend:production
+    container_name: eft-backend
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      - RUST_LOG=info,eft_backend=debug
+      - PORT=8080
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres_secure_pass@postgres:5432/eft_blog}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - SESSION_SECRET=${SESSION_SECRET:-change_me_to_a_random_32_byte_string}
+      - ASSETS_DIR=${ASSETS_DIR:-/data/assets}
+      - MAX_UPLOAD_SIZE_BYTES=${MAX_UPLOAD_SIZE_BYTES:-10485760}
+      - ENABLE_PUBLIC_REGISTRATION=${ENABLE_PUBLIC_REGISTRATION:-false}
+      - ADMIN_DEFAULT_EMAIL=${ADMIN_DEFAULT_EMAIL:-admin@eft.io.vn}
+      - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD:-admin123456_ChangeMeInProd!}
+      - ADMIN_DEFAULT_NAME=${ADMIN_DEFAULT_NAME:-Quản Trị Viên EFT}
+    volumes:
+      - eft_assets:/data/assets
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - eft-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/v2/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: eft-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres_secure_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-eft_blog}
+    volumes:
+      - eft_pgdata:/var/lib/postgresql/data
+    networks:
+      - eft-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-eft_blog}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: eft-redis
+    restart: unless-stopped
+    volumes:
+      - eft_redisdata:/data
+    networks:
+      - eft-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+networks:
+  eft-net:
+    name: eft-net
+    driver: bridge
+
+volumes:
+  eft_pgdata:
+    name: eft_pgdata
+  eft_redisdata:
+    name: eft_redisdata
+  eft_assets:
+    name: eft_assets
