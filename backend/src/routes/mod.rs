@@ -50,4 +50,15 @@ pub fn create_router() -> Router<SharedState> {
             post(admin::admin_publish_post),
         )
         .route("/api/v2/admin/assets", get(admin::admin_list_assets))
+        // Administrative dashboard stats
+        .route("/api/v2/admin/stats", get(admin::admin_get_stats))
+        // Administrative user accounts management (RBAC)
+        .route(
+            "/api/v2/admin/users",
+            get(admin::admin_list_users).post(admin::admin_create_user),
+        )
+        .route(
+            "/api/v2/admin/users/{id}",
+            axum::routing::put(admin::admin_update_user).delete(admin::admin_delete_user),
+        )
 }

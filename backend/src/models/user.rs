@@ -52,3 +52,19 @@ pub struct RegisterRequest {
     pub password: String,
     pub name: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest {
+    pub email: String,
+    pub password: String,
+    pub name: String,
+    pub role: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserRequest {
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub role: Option<String>,
+    pub password: Option<String>,
+}

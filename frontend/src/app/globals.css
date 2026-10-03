@@ -196,3 +196,12 @@ body {
 .btn-primary-gradient {
   @apply bg-gradient-to-r from-violet-600 to-rose-600 text-white border border-white/15 shadow-md shadow-violet-600/25 hover:shadow-rose-600/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200;
 }
+
+/* KaTeX Formula Dark Theme Tweaks */
+.katex {
+  @apply text-zinc-100;
+}
+
+.katex-display {
+  @apply my-6 overflow-x-auto overflow-y-hidden py-3 px-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-center;
+}

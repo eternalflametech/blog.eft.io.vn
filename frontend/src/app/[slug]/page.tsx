@@ -30,15 +30,32 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
     };
   }
 
-  const siteUrl = 'https://blog.eft.io.vn';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blog.eft.io.vn';
   const canonicalUrl = `${siteUrl}/${post.slug}`;
   const ogImage = post.cover_image || `${siteUrl}/logo.png`;
+  const tagKeywords = post.tags?.map((t) => t.name) || [];
 
   return {
     title: post.title,
     description: post.excerpt,
+    keywords: tagKeywords,
+    category: 'AI & Robotics',
     alternates: {
       canonical: canonicalUrl,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
     openGraph: {
       type: 'article',
@@ -49,9 +66,13 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
       publishedTime: post.published_at || post.created_at,
       modifiedTime: post.updated_at,
       authors: [post.author_name],
+      section: 'AI & Robotics',
+      tags: tagKeywords,
       images: [
         {
           url: ogImage,
+          width: 1200,
+          height: 630,
           alt: post.title,
         },
       ],
@@ -61,6 +82,8 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
       title: post.title,
       description: post.excerpt,
       images: [ogImage],
+      creator: '@eternalflametech',
+      site: '@eternalflametech',
     },
   };
 }
@@ -73,9 +96,11 @@ export default async function PostPage({ params }: PostPageProps) {
     notFound();
   }
 
-  const siteUrl = 'https://blog.eft.io.vn';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blog.eft.io.vn';
   const canonicalUrl = `${siteUrl}/${post.slug}`;
   const readingDuration = estimateReadingTime(post.content);
+  const wordCount = post.content.split(/\s+/).filter(Boolean).length;
+  const readingMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
   // JSON-LD Structured Data: BlogPosting & BreadcrumbList
   const jsonLdArticle = {
@@ -86,6 +111,16 @@ export default async function PostPage({ params }: PostPageProps) {
     image: post.cover_image ? [post.cover_image] : [`${siteUrl}/logo.png`],
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at,
+    inLanguage: 'vi-VN',
+    articleSection: 'AI & Robotics',
+    keywords: post.tags?.map((t) => t.name).join(', '),
+    wordCount,
+    timeRequired: `PT${readingMinutes}M`,
+    copyrightYear: new Date(post.published_at || post.created_at).getFullYear(),
+    copyrightHolder: {
+      '@type': 'Organization',
+      name: 'Eternal Flame Tech',
+    },
     author: {
       '@type': 'Person',
       name: post.author_name,

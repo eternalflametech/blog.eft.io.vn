@@ -74,3 +74,25 @@ export interface AssetUploadResponse {
   size_bytes: number;
   deduplicated: boolean;
 }
+
+export interface AdminStats {
+  total_posts: number;
+  published_posts: number;
+  draft_posts: number;
+  total_users: number;
+  total_assets: number;
+}
+
+export interface CreateUserData {
+  email: string;
+  password: string;
+  name: string;
+  role: 'admin' | 'editor' | 'author';
+}
+
+export interface UpdateUserData {
+  name?: string;
+  email?: string;
+  role?: 'admin' | 'editor' | 'author';
+  password?: string;
+}
