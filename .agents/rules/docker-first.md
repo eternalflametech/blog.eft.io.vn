@@ -1,0 +1,28 @@
+---
+trigger: always_on
+description: enforce docker-first container architecture, multi-stage builds, non-root runtimes, healthchecks, named volumes, and dev-host sudo policy
+---
+
+# Docker-First & Containerization Directives
+
+## 1. Containerization Mandate
+- **All Services Containerised:** Every application component (Rust Axum backend, Next.js frontend, PostgreSQL database, Redis cache, reverse proxy, background workers) must run as a declared Docker service.
+- **Zero Host Runtime Dependency:** The delivered application must never require host-level installations of Rust, Node.js, npm, or PostgreSQL. The only host requirement is Docker Engine and Docker Compose.
+- **Canonical Entry Point:** `docker compose up` is the standard entry point to launch and verify the complete application stack end-to-end.
+
+## 2. Dockerfile Standards
+- **Multi-Stage Builds:** Every Dockerfile must separate compilation from runtime. Build binaries/bundles in a full toolchain container and copy only compiled artifacts into the final runtime stage.
+- **Pinned Base Images:** Pin exact, stable base image tags (e.g., `rust:1.82-alpine`, `node:20.18-alpine`, `postgres:16.4-alpine`). Never use mutable tags like `latest`.
+- **Non-Root Runtime:** Container processes must never execute as `root`. Declare and switch to an unprivileged user (e.g., `USER appuser` or `USER node`) in the runtime stage.
+- **Layer Caching Optimization:** Structure instructions from least frequently changed (dependency manifests, package locks) to most frequently changed (source code) to maximize build cache efficiency.
+
+## 3. Docker Compose Invariants
+- **Inter-Service Dependencies & Healthchecks:** Declare explicit `healthcheck` definitions for all long-running services (database readiness via `pg_isready`, API ping endpoints via `curl -f`). Bind dependencies using `depends_on` with `condition: service_healthy`.
+- **Named Volumes for Persistence:** Store persistent application state (PostgreSQL data files, Redis snapshots, uploaded media assets) strictly in declared, named Docker volumes. Never use anonymous volumes or host repository bind mounts for persistent application state.
+- **Network Isolation:** Group backend services in an internal Docker bridge network without publishing ports to the host. Only the Next.js frontend gateway on port 3000 may publish a host port.
+- **Environment & Secret Flow:** Inject configuration via environment variables declared in Compose or gitignored `.env` files. Provide `.env.example` documenting all configuration keys without secrets.
+
+## 4. Dev-Host Sudo Policy
+- **Dev-Host Convenience Only:** On the dedicated Debian 13 development host, `sudo` is available without restriction. The agent may use `sudo` to install Docker, configure the docker group, manage systemd services, adjust local firewall rules, and manage Docker networks without prior approval.
+- **No Embedded Sudo:** Sudo must NEVER be embedded into Dockerfiles, Compose files, Makefile targets, or project scripts. Container services run without root privileges.
+- **Destructive Bounds:** Sudo commands must never target system directories or data outside project scope (`rm -rf /`, formatting disks, modifying unrelated user keys). If an unexpected error occurs during a sudo command, pause and consult the user.

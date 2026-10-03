@@ -1,0 +1,92 @@
+# Agent & Developer Environment Setup
+
+## 1. Overview
+This guide provides onboarding instructions for developers and coding assistants operating on the Eternal Flame Tech Blog (EFT Blog) repository. Both Cursor and Antigravity tooling configurations are natively supported, synchronized, and centered around a Docker-first runtime model.
+
+## 2. Environment Prerequisites & Docker-First Mandate
+The application runs entirely within Docker containers. No host-level runtimes for Rust, Node.js, npm, or PostgreSQL are required.
+
+The host requirements are strictly:
+- **Operating System:** Debian 13 (Trixie) or compatible Linux environment.
+- **Container Engine:** Docker Engine (v24+) and Docker Compose plugin (v2+).
+- **Version Control:** Git configured with cryptographic SSH commit signing:
+  ```bash
+  git config user.name "nmkdeveloper"
+  git config user.email "nguyenminhkhoi.nmk.dev@gmail.com"
+  git config user.signingkey ~/.ssh/id_ed25519.pub
+  git config commit.gpgsign true
+  git config gpg.format ssh
+  ```
+
+### Dev-Host Sudo Policy
+On the dedicated Debian 13 development host, `sudo` is available without restriction. The agent may use `sudo` to install Docker, configure the docker group, manage systemd services, adjust local firewall rules, and manage Docker networks without prior approval. However, `sudo` is never embedded into project scripts, Dockerfiles, or Compose services; all delivered application containers run as unprivileged, non-root users.
+
+---
+
+## 3. Docker-Only Quickstart
+Get the complete full-stack environment running in three steps:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/eternalflametech/blog.eft.io.vn_skills.git
+cd blog.eft.io.vn_skills
+
+# 2. Configure environment variables
+cp .env.example .env
+
+# 3. Start all services
+docker compose up -d --build
+```
+
+---
+
+## 4. Directory Layout & Configuration Architecture
+The project root contains configuration trees for both supported AI coding environments:
+
+```
+├── AGENTS.md                  # Unified root directives (session entry point)
+├── .cursor/
+│   ├── rules/*.mdc            # Cursor context-aware rules with YAML frontmatter
+│   └── skills/*/SKILL.md      # Cursor on-demand skill instruction bundles
+├── .agents/
+│   ├── rules/*.md             # Antigravity rules with trigger modes
+│   └── skills/*/SKILL.md      # Antigravity on-demand skill instruction bundles
+├── docs/                      # Technical specifications and guides
+├── scripts/                   # Debian-native shell automation utilities
+└── assets/                    # Project assets (e.g. assets/logo.png)
+```
+
+---
+
+## 5. Setting Up Cursor
+1. **Rule Discovery:** Cursor automatically discovers rules located in `.cursor/rules/`.
+   - Rules with `alwaysApply: true` (`safety.mdc`, `workflow.mdc`, `docker-first.mdc`) are active in every session turn.
+   - Domain-specific rules (`performance.mdc`, `seo.mdc`, `blog-editor.mdc`, `access-control.mdc`, `asset-library.mdc`) activate conditionally based on file matching glob patterns.
+2. **Skill Discovery:** Cursor indexes skill bundles located in `.cursor/skills/*/SKILL.md`. The frontmatter `name` and `description` are loaded into memory and activated progressively when relevant tasks are triggered.
+3. **Verification in Cursor:**
+   - Open the project in Cursor.
+   - Verify that `.cursor/rules/` rules appear in project settings.
+   - Test the assistant with a task touching backend routes and observe that `safety.mdc`, `access-control.mdc`, and `docker-first.mdc` directives are honored.
+
+---
+
+## 6. Setting Up Antigravity
+1. **Rule Discovery:** Antigravity discovers rules in `.agents/rules/` and hierarchical directives in `AGENTS.md`.
+   - Rules with `trigger: always_on` (`safety.md`, `workflow.md`, `docker-first.md`) load into the active context unconditionally.
+   - Rules with `trigger: model_decision` (`performance.md`, `seo.md`, etc.) are progressively loaded based on task relevance.
+2. **Skill Discovery:** Antigravity scans `.agents/skills/*/SKILL.md` for on-demand capabilities (`interviewing`, `laziness`, `safety-audit`, `performance-audit`, `docker-audit`).
+3. **Verification in Antigravity:**
+   - Launch an Antigravity session from the project root.
+   - Verify that the directives in `AGENTS.md` and `.agents/rules/` are recognized.
+   - Request an architecture plan to verify the agent follows the 10-step workflow without bypassing user verification.
+
+---
+
+## 7. Verification Checklist for New Developers
+- [ ] SSH signing key is configured and verified with `git commit -S`.
+- [ ] Docker Compose starts PostgreSQL, Redis, frontend, and backend cleanly via `docker compose up -d`.
+- [ ] All containers report `healthy` status via `docker compose ps`.
+- [ ] Pre-commit tests run with 100% pass rate.
+- [ ] Code comments adhere strictly to logic, input, and output descriptions only.
+- [ ] Runtime date retrieval is performed via HTTP request rather than system clock.
+- [ ] All scripts are Debian-native with executable POSIX permissions.

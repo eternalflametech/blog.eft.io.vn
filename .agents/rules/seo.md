@@ -1,0 +1,39 @@
+---
+trigger: model_decision
+description: enforce search engine optimization, server-side rendering, json-ld schemas, meta tags, and semantic html
+---
+
+# Search Engine Optimization (SEO) Directives
+
+## 1. Server-Side Rendering & Crawlability
+- **Public Page Rendering:** All public blog articles, category listings, and author pages must be server-rendered (SSR/ISR) so search engine crawlers receive fully hydrated HTML without client JavaScript execution.
+- **Semantic HTML Hierarchy:** Structure document layouts with correct landmark elements (`<header>`, `<nav>`, `<main>`, `<article>`, `<aside>`, `<footer>`, `<time>`). Enforce a single `<h1>` tag per page matching the article title.
+
+## 2. Meta Tags & Social Previews
+- **Page Titles & Descriptions:** Provide unique, contextual `<title>` tags (format: `{Article Title} | Eternal Flame Tech`) and meta descriptions (140-160 characters derived from article excerpt).
+- **Canonical URLs:** Inject dynamic canonical tags (`<link rel="canonical" href="{canonical_url}" />`) matching the authoritative article URL.
+- **Open Graph Protocol:** Generate complete Open Graph tags for social sharing:
+  - `og:type` (`article` for blog posts, `website` for home/indexes).
+  - `og:title`, `og:description`, `og:url`.
+  - `og:image`: Point to article cover image or fallback to the official brand asset at project-relative path `assets/logo.png`.
+  - `article:published_time` and `article:modified_time` in ISO 8601 format.
+- **Twitter Cards:** Provide `twitter:card` set to `summary_large_image`, alongside title, description, and preview image.
+
+## 3. Structured Data (JSON-LD)
+- **Article Schema:** Embed valid JSON-LD schema on all post pages:
+  - `@context`: `https://schema.org`
+  - `@type`: `BlogPosting` or `Article`
+  - `headline`, `image`, `datePublished`, `dateModified`
+  - `author`: Person object with name
+  - `publisher`: Organization object referencing Eternal Flame Tech and `assets/logo.png`
+- **BreadcrumbList Schema:** Provide breadcrumb navigation structured data on nested post and category pages.
+- **Organization Schema:** Provide Club organization details on the home and about pages.
+
+## 4. Crawl Assets & Syndication
+- **Dynamic Sitemap:** Serve an automated `sitemap.xml` listing all published articles, category indexes, and static pages with accurate `<lastmod>` timestamps and change frequencies.
+- **Robots Policy:** Maintain a valid `robots.txt` granting access to public content while disallowing internal administrative routes (`/admin`, `/api/v2/private`).
+- **Web Syndication:** Provide automated RSS 2.0 (`/feed.xml`) and Atom feeds containing full or excerpted post content for feed readers.
+
+## 5. Vietnamese URL Slugs & Layout Stability
+- **Vietnamese Slug Normalization:** Convert Vietnamese diacritics to plain ASCII characters, convert to lowercase, replace punctuation and spaces with single hyphens, and strip leading/trailing hyphens.
+- **Zero Cumulative Layout Shift (CLS):** Set explicit `width` and `height` (or aspect-ratio containers) on all rendered images, hero banners, and embeds to prevent layout jumps during page load.
