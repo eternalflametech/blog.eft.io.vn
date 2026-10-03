@@ -3,6 +3,7 @@
 // Output: Server-rendered public landing page (ISR revalidate 60s).
 
 import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
 import PostCard from '@/components/PostCard';
 import { getPosts, getTags } from '@/lib/api';
 import { Tag } from '@/lib/types';
@@ -77,10 +78,13 @@ export default async function HomePage() {
               Đọc bài viết mới nhất
             </a>
             <a
-              href="#about"
-              className="rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-3 text-sm font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white transition-all"
+              href="https://eft.io.vn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-3 text-sm font-semibold text-zinc-300 hover:border-violet-500/40 hover:text-white transition-all"
             >
-              Về Câu lạc bộ EFT
+              <span>Ghé thăm Cổng EFT</span>
+              <ExternalLink className="h-4 w-4 opacity-70" />
             </a>
           </div>
         </div>
@@ -134,34 +138,7 @@ export default async function HomePage() {
           </div>
         )}
 
-        {/* About Club Section */}
-        <section id="about" className="mt-24 rounded-3xl border border-zinc-800 bg-zinc-925 p-8 sm:p-12">
-          <div className="max-w-3xl">
-            <div className="text-xs font-mono uppercase tracking-wider text-violet-400 mb-2">
-              Giới Thiệu
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-4">
-              Câu Lạc Bộ Eternal Flame Tech (EFT)
-            </h2>
-            <p className="text-zinc-300 leading-relaxed mb-6">
-              Được thành lập bởi các học sinh đam mê công nghệ tại Trường THPT Chuyên Nguyễn Thị Minh Khai, Cần Thơ, Eternal Flame Tech hướng tới việc xây dựng một môi trường học tập, nghiên cứu và sáng tạo chất lượng cao trong lĩnh vực Trí Tuệ Nhân Tạo và Tự Động Hóa.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-zinc-800/80">
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 p-4">
-                <div className="font-semibold text-white text-sm mb-1">Trí Tuệ Nhân Tạo</div>
-                <div className="text-xs text-zinc-400">Machine Learning, Deep Learning, Computer Vision.</div>
-              </div>
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 p-4">
-                <div className="font-semibold text-white text-sm mb-1">Robotics & IoT</div>
-                <div className="text-xs text-zinc-400">Thiết kế phần cứng, lập trình vi điều khiển, cơ điện tử.</div>
-              </div>
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 p-4">
-                <div className="font-semibold text-white text-sm mb-1">Thi Đấu Học Thuật</div>
-                <div className="text-xs text-zinc-400">Hội thi Tin học trẻ, Robocon, Sáng tạo Khoa học Kỹ thuật.</div>
-              </div>
-            </div>
-          </div>
-        </section>
+
       </div>
     </>
   );
