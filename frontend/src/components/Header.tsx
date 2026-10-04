@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ExternalLink, Lock, Rss, Sparkles } from 'lucide-react';
+import { Lock, Sparkles } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -146,10 +146,8 @@ export default function Header() {
                         rel="noopener noreferrer"
                         onMouseEnter={(e) => updateIndicatorPosition(e.currentTarget)}
                         onClick={() => setIsMobileOpen(false)}
-                        className="flex items-center justify-between lg:justify-center gap-1.5"
                       >
-                        <span>{item.label}</span>
-                        <ExternalLink className="h-3 w-3 opacity-60" />
+                        {item.label}
                       </a>
                     ) : (
                       <Link
