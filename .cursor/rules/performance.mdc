@@ -15,11 +15,12 @@ alwaysApply: false
 - **Index Architecture:** Index all foreign keys, status filters (`status = 'published'`), timestamp orderings (`published_at DESC`), and slug columns (`slug UNIQUE`).
 - **Connection Pooling:** Tune SQLx `PgPool` with sensible min/max connection pools suitable for the deployment environment.
 - **Eliminate N+1 Queries:** Never issue separate queries in a loop for post tags, authors, or asset associations. Use composite SQL joins, subqueries, or batch queries (`WHERE id = ANY(...)`).
+- **20-Post Default Pagination:** Default article feed limit to 20 posts (`clamp(1, 50)`). Implement fast-path short-circuiting: when `COUNT(*)` returns 0, bypass the item retrieval query completely.
 
 ## 3. Rust Backend & Axum Runtime
 - **Tokio Non-Blocking Operations:** Never call synchronous or blocking functions (`std::thread::sleep`, synchronous filesystem operations, unbuffered I/O) within async Axum handler routines. Offload unavoidable CPU-bound tasks to `tokio::task::spawn_blocking`.
 - **Minimal Memory Overhead:** Keep idle Axum memory footprint lean (target 4-6 MB). Avoid cloning large heap structures; pass data via immutable references (`&Arc<State>`) or streaming bodies.
-- **Cache-Aside with Redis & Bincode:** Cache serialized article payloads in Redis using Bincode binary serialization. Target ~0.1ms cache retrieval latency. Invalidate cached keys immediately upon post update or deletion.
+- **Cache-Aside with Redis & Bincode:** Cache paginated article lists using dynamic keys (`cache:posts:list:{tag}:{page}:{limit}`) with 180s TTL serialized via Bincode (~0.1ms retrieval). Invalidate all matching keys (`cache:posts:*`) immediately upon any post creation, update, or deletion.
 - **HTTP Compression:** Use Tower-HTTP `CompressionLayer` to automatically compress API responses exceeding 1 KB with Brotli (`br`), Zstandard (`zstd`), or Gzip based on client `Accept-Encoding`.
 
 ## 4. Next.js Frontend & Core Web Vitals

@@ -17,16 +17,18 @@ This document outlines production security invariants for the Eternal Flame Tech
 - [ ] Markdown-to-HTML rendering pipelines pass output through strict sanitizers (`ammonia` or `rehype-sanitize`).
 - [ ] Forbidden tags (`<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<style>`) are stripped.
 - [ ] Inline HTML event attributes (`onclick`, `onerror`, `onload`) are purged.
+- [ ] KaTeX mathematical formula expressions are sanitized without raw script evaluation (`throwOnError: false`).
 - [ ] All external links rendered from user content include `rel="noopener noreferrer nofollow"`.
 - [ ] Dynamic user text in UI components is properly escaped by default in React templates.
 
-### 2.3. Authentication & Access Control
-- [ ] All mutation endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) enforce administrator role verification in server-side Axum middleware.
+### 2.3. Authentication & Role-Based Access Control (RBAC)
+- [ ] All mutation endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) enforce typed server-side Axum authorization extractors (`RequireAdmin`, `RequireEditor`).
+- [ ] User administration endpoint (`/api/v2/admin/users`) is strictly restricted to `superadmin` and `admin` roles.
 - [ ] Public user registration is disabled by default via `ENABLE_PUBLIC_REGISTRATION=false`.
-- [ ] Administrator provisioning is restricted to CLI tools or database seed migrations.
+- [ ] Initial administrator provisioning is restricted to CLI tools or database seed migrations.
 - [ ] Passwords are hashed using Argon2id with cryptographically random salts.
 - [ ] Session tokens are stored in `HttpOnly`, `SameSite=Strict`, `Secure` cookies.
-- [ ] Token revocation is immediate upon logout, clearing both server database records and Redis cache entries.
+- [ ] Token revocation is immediate upon logout, clearing both server database records and Redis cache entries (`cache:session:*`, `cache:auth:*`).
 - [ ] Brute-force protection and rate limiting are enforced on `/api/v2/auth/login`.
 
 ### 2.4. File & Asset Upload Safety

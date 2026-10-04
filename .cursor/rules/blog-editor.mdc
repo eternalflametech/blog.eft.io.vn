@@ -24,9 +24,10 @@ alwaysApply: false
   - `Ctrl/Cmd + S`: Trigger draft save.
   - `Tab` / `Shift + Tab`: Indent / Outdent list items and code lines.
 
-## 3. Media Ingestion & Syntax Highlighting
+## 3. Media Ingestion, Syntax Highlighting & LaTeX Formulas
 - **Drag-and-Drop & Clipboard Uploads:** Allow users to drag image files directly onto the editor canvas or paste image data from the clipboard. Automatically trigger upload to the asset endpoint (`/api/v2/assets`) and inject Markdown image markup `![alt]({url})` at current cursor position.
 - **Syntax Highlighting:** Render fenced code blocks with language detection, syntax coloring using EFT theme tokens, and a one-click copy button.
+- **LaTeX Math Typesetting (KaTeX):** Render inline math expressions (`$formula$`) and display block math formulas (`$$formula$$`) seamlessly in both real-time preview and public article reader views using KaTeX with dark theme typography.
 
 ## 4. Frontmatter Management & Metadata
 - **Structured Fields:** Provide intuitive UI fields or YAML frontmatter parsing for article metadata:

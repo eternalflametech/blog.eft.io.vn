@@ -25,8 +25,9 @@ Rules enforce invariant engineering standards, architectural constraints, and op
 ### Key Directives
 - **Measurement-First:** Profile before and after changes. Document metrics in task reports.
 - **PostgreSQL Plan Analysis:** Run `EXPLAIN (ANALYZE, BUFFERS)` to verify index usage on foreign keys, status filters, and slug lookups. Eliminate N+1 query patterns.
+- **20-Post Default Pagination:** Paginate article feeds by 20 items per page with bounds enforcement (`clamp(1, 50)`). Implement fast-path short circuit for empty tables to eliminate redundant queries.
 - **Non-Blocking Rust:** Tokio runtime handlers must not invoke blocking thread functions. Offload intensive tasks to `tokio::task::spawn_blocking`. Maintain idle Axum memory footprint at 4-6 MB.
-- **Cache-Aside & Compression:** Cache payloads in Redis via Bincode binary serialization (~0.1ms cache retrieval). Compress responses larger than 1 KB with Brotli/zstd via Tower-HTTP `CompressionLayer`.
+- **Cache-Aside & Compression:** Dynamic Redis cache keying (`cache:posts:list:{tag}:{page}:{limit}` with 180s TTL) serialized via Bincode (~0.1ms retrieval). Immediate wildcard invalidation (`cache:posts:*`) on any mutation. Compress responses larger than 1 KB with Brotli/zstd via Tower-HTTP `CompressionLayer`.
 - **Frontend Optimization:** Next.js ISR with `<Link>` prefetching, lazy-loaded images with fixed aspect ratios (CLS < 0.1), and purged Tailwind stylesheets.
 
 ---
@@ -40,7 +41,7 @@ Rules enforce invariant engineering standards, architectural constraints, and op
 - **Contextual Meta Tags:** Generate unique page titles, meta descriptions (140-160 characters), canonical URLs, Open Graph tags, and Twitter Cards (`summary_large_image`).
 - **Brand Visual Fallback:** Reference `assets/logo.png` as the default Open Graph sharing image and publisher logo.
 - **Structured Data:** Embed valid JSON-LD schemas for `Article`, `BreadcrumbList`, and `Organization`.
-- **Syndication & Sitemaps:** Auto-generate dynamic `sitemap.xml`, `robots.txt`, and RSS 2.0 / Atom feeds.
+- **Syndication & Dynamic Sitemaps:** Auto-generate dynamic `sitemap.xml` with individual post URLs (`<loc>`, `<lastmod>`, `<changefreq>weekly`, `<priority>0.8`), tag pages, `robots.txt`, and RSS 2.0 / Atom feeds.
 - **Vietnamese Slugs:** Strip Vietnamese diacritics, lowercase text, and separate tokens with single hyphens.
 
 ---
@@ -52,6 +53,7 @@ Rules enforce invariant engineering standards, architectural constraints, and op
 ### Key Directives
 - **Dual-Pane Interface:** Markdown textarea with synchronized live preview and EFT dark theme styling.
 - **Formatting Actions:** Toolbar and keyboard shortcuts for text formatting (bold, italic, code), headings, blockquotes, lists, tables, links, and footnotes.
+- **LaTeX Math Support (KaTeX):** Native mathematical formula typesetting for inline math (`$formula$`) and display block math (`$$formula$$`) in both live preview and published article views.
 - **Drag-and-Drop Upload:** Support drag-and-drop and clipboard paste for images, uploading to `/api/v2/assets` and injecting Markdown syntax at cursor position.
 - **Syntax Highlighting:** Format code blocks with language detection and one-click copy buttons.
 - **Frontmatter Management:** Manage article metadata (`title`, `slug`, `tags`, `cover_image`, `excerpt`, `published_at`).
@@ -64,10 +66,16 @@ Rules enforce invariant engineering standards, architectural constraints, and op
 - **Antigravity Path:** `.agents/rules/access-control.md` (`trigger: model_decision`)
 
 ### Key Directives
-- **Admin Exclusivity:** All article publishing, modifications, and asset management actions require verified `admin` role.
+- **Role-Based Access Control (RBAC):** Granular user role hierarchy:
+  - `superadmin`: Full root privileges across system, posts, assets, and user accounts.
+  - `admin`: Full administrative access to manage posts, assets, and provision editor/viewer accounts.
+  - `editor`: Create, edit, and publish own articles and manage assets.
+  - `viewer`: Read-only access to administrative analytics and internal previews.
+- **Server-Side Enforcement:** Enforce typed Axum extractors (`RequireAdmin`, `RequireEditor`) on administrative endpoints. User management (`/api/v2/admin/users`) is strictly restricted to `superadmin`/`admin`.
+- **User Management Portal:** Dedicated administrative interface at `/admin/users` to create accounts and assign roles.
 - **Disabled Public Registration:** Public registration is disabled by default via `ENABLE_PUBLIC_REGISTRATION=false`.
-- **CLI Provisioning:** Administrator accounts are provisioned exclusively through secure CLI tooling or database seeds. Passwords hashed using Argon2id.
-- **Server Route Enforcement:** Enforce Axum middleware authentication on all mutation routes. Protect sessions via `HttpOnly`, `SameSite=Strict`, `Secure` cookies.
+- **CLI & Seed Provisioning:** Initial root administrator provisioned via seeds or secure CLI tooling. Passwords hashed using Argon2id with unique salts.
+- **Session Tokens:** Protect sessions via `HttpOnly`, `SameSite=Strict`, `Secure` cookies with immediate Redis revocation upon logout.
 
 ---
 

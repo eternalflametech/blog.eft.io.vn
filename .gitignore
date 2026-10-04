@@ -31,3 +31,26 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# AI Coding Agent & Assistant Artifacts
+.gemini/
+.claude/
+.chatgpt/
+.cortex/
+.copilot/
+.antigravity/
+.continue/
+.aider*
+.windsurf/
+.cline/
+.roo/
+.system_generated/
+.scratch/
+scratch/
+agent-scratch/
+agent-artifacts/
+agent-transcripts/
+reports/
+*.agent.tmp
+*.agent.log
+

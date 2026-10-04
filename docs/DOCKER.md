@@ -12,8 +12,8 @@ A developer or administrator on a fresh Debian 13 host can start the complete ap
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/eternalflametech/blog.eft.io.vn_skills.git
-cd blog.eft.io.vn_skills
+git clone https://github.com/eternalflametech/blog.eft.io.vn.git
+cd blog.eft.io.vn
 
 # 2. Configure environment
 cp .env.example .env
@@ -21,6 +21,13 @@ cp .env.example .env
 # 3. Launch full stack
 docker compose up -d --build
 ```
+
+### Initial Credentials & Clean State
+On first launch, database migrations automatically provision the primary administrator account:
+- **Email:** `admin@eft.io.vn`
+- **Password:** `EFT_Admin_2024!_Secure`
+- **Role:** `superadmin`
+- **Initial Posts:** Clean zero-state (no hardcoded mock posts).
 
 Access points:
 - **Frontend & Public Gateway:** `http://localhost:3000`
