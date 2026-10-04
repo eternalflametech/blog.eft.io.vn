@@ -41,8 +41,8 @@ docker compose up -d --build
 ### Initial Credentials & Clean Database
 On cold start, database migrations automatically seed the root administrator:
 - **Email:** `admin@eft.io.vn`
-- **Password:** `EFT_Admin_2024!_Secure`
-- **Role:** `superadmin`
+- **Password:** `admin123456_ChangeMeInProd!`
+- **Role:** `admin`
 - **Database State:** Clean zero-state (ready for production content).
 
 ---

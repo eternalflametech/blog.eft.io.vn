@@ -25,8 +25,8 @@ docker compose up -d --build
 ### Initial Credentials & Clean State
 On first launch, database migrations automatically provision the primary administrator account:
 - **Email:** `admin@eft.io.vn`
-- **Password:** `EFT_Admin_2024!_Secure`
-- **Role:** `superadmin`
+- **Password:** `admin123456_ChangeMeInProd!`
+- **Role:** `admin`
 - **Initial Posts:** Clean zero-state (no hardcoded mock posts).
 
 Access points:
