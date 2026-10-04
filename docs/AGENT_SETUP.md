@@ -38,11 +38,12 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-### Initial Credentials & Clean Database
+### Initial Credentials & Forced Password Change
 On cold start, database migrations automatically seed the root administrator:
 - **Email:** `admin@eft.io.vn`
-- **Password:** `admin123456_ChangeMeInProd!`
-- **Role:** `admin`
+- **Initial Password:** `admin` (not stored in `.env` for zero-leakage security)
+- **Role:** `admin` (Root Administrator)
+- **Security Rule:** Upon login, the system renders a non-dismissible modal requiring an immediate password change.
 - **Database State:** Clean zero-state (ready for production content).
 
 ---

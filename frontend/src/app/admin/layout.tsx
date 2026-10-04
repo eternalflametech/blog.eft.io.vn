@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { authGetMe, logout } from '@/lib/api';
 import { User } from '@/lib/types';
+import ForcePasswordChangeModal from '@/components/ForcePasswordChangeModal';
 
 export default function AdminLayout({
   children,
@@ -160,6 +161,14 @@ export default function AdminLayout({
       </div>
 
       <div className="flex-1">{children}</div>
+
+      {/* Force Password Change Modal (Non-dismissible) */}
+      <ForcePasswordChangeModal
+        isOpen={Boolean(currentUser?.must_change_password)}
+        onSuccess={() => {
+          setCurrentUser((prev) => (prev ? { ...prev, must_change_password: false } : null));
+        }}
+      />
     </div>
   );
 }

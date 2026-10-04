@@ -506,7 +506,7 @@ pub async fn admin_list_users(
     RequireAdmin(_admin): RequireAdmin,
 ) -> Result<impl IntoResponse, AppError> {
     let users: Vec<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, role, created_at, updated_at FROM users ORDER BY created_at ASC"
+        "SELECT id, email, password_hash, name, role, must_change_password, created_at, updated_at FROM users ORDER BY created_at ASC"
     )
     .fetch_all(&state.pool)
     .await?;
@@ -544,9 +544,9 @@ pub async fn admin_create_user(
     let password_hash = hash_password(&payload.password)?;
 
     let user: User = sqlx::query_as(
-        r#"INSERT INTO users (email, password_hash, name, role, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           RETURNING id, email, password_hash, name, role, created_at, updated_at"#
+        r#"INSERT INTO users (email, password_hash, name, role, must_change_password, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING id, email, password_hash, name, role, must_change_password, created_at, updated_at"#
     )
     .bind(&payload.email)
     .bind(&password_hash)
@@ -568,7 +568,7 @@ pub async fn admin_update_user(
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let existing: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, role, created_at, updated_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, role, must_change_password, created_at, updated_at FROM users WHERE id = $1"
     )
     .bind(id)
     .fetch_optional(&state.pool)
@@ -605,7 +605,7 @@ pub async fn admin_update_user(
         r#"UPDATE users 
            SET name = $1, email = $2, role = $3, password_hash = $4, updated_at = CURRENT_TIMESTAMP
            WHERE id = $5
-           RETURNING id, email, password_hash, name, role, created_at, updated_at"#
+           RETURNING id, email, password_hash, name, role, must_change_password, created_at, updated_at"#
     )
     .bind(&new_name)
     .bind(&new_email)

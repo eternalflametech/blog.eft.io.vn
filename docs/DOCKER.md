@@ -22,11 +22,12 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-### Initial Credentials & Clean State
-On first launch, database migrations automatically provision the primary administrator account:
+### Initial Credentials & Forced Password Change
+On first launch, database migrations automatically seed the root administrator account:
 - **Email:** `admin@eft.io.vn`
-- **Password:** `admin123456_ChangeMeInProd!`
-- **Role:** `admin`
+- **Initial Password:** `admin` (not stored in `.env` for security)
+- **Role:** `admin` (Full Administrator)
+- **Security Policy:** Immediately upon login, a non-dismissible modal forces the administrator to update their password to a secure custom passphrase.
 - **Initial Posts:** Clean zero-state (no hardcoded mock posts).
 
 Access points:

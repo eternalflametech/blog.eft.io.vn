@@ -15,6 +15,7 @@ pub struct User {
     pub password_hash: String,
     pub name: String,
     pub role: String,
+    pub must_change_password: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -25,6 +26,7 @@ pub struct UserResponse {
     pub email: String,
     pub name: String,
     pub role: String,
+    pub must_change_password: bool,
     pub created_at: DateTime<Utc>,
 }
 
@@ -35,9 +37,16 @@ impl From<User> for UserResponse {
             email: user.email,
             name: user.name,
             role: user.role,
+            must_change_password: user.must_change_password,
             created_at: user.created_at,
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
 }
 
 #[derive(Debug, Deserialize)]

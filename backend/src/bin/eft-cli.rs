@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let id = Uuid::new_v4();
                 sqlx::query(
-                    "INSERT INTO users (id, email, password_hash, name, role) VALUES ($1, $2, $3, $4, 'admin')"
+                    "INSERT INTO users (id, email, password_hash, name, role, must_change_password) VALUES ($1, $2, $3, $4, 'admin', FALSE)"
                 )
                 .bind(id)
                 .bind(email.trim())
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .to_string();
 
                 let result = sqlx::query(
-                    "UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2"
+                    "UPDATE users SET password_hash = $1, must_change_password = FALSE, updated_at = CURRENT_TIMESTAMP WHERE email = $2"
                 )
                 .bind(&password_hash)
                 .bind(email.trim())

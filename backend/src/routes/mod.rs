@@ -26,6 +26,7 @@ pub fn create_router() -> Router<SharedState> {
         .route("/api/v2/auth/login", post(auth::login))
         .route("/api/v2/auth/logout", post(auth::logout))
         .route("/api/v2/auth/me", get(auth::me))
+        .route("/api/v2/auth/change-password", post(auth::change_password))
         .route("/api/v2/auth/register", post(auth::register))
         // Public posts & tags
         .route("/api/v2/posts", get(posts::list_posts))

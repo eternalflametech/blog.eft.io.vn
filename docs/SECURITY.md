@@ -25,7 +25,7 @@ This document outlines production security invariants for the Eternal Flame Tech
 - [ ] All mutation endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) enforce typed server-side Axum authorization extractors (`RequireAdmin`, `RequireEditor`).
 - [ ] User administration endpoint (`/api/v2/admin/users`) is strictly restricted to `superadmin` and `admin` roles.
 - [ ] Public user registration is disabled by default via `ENABLE_PUBLIC_REGISTRATION=false`.
-- [ ] Initial administrator provisioning is restricted to CLI tools or database seed migrations.
+- [ ] Initial administrator default password (`admin`) is not stored in `.env`; immediate password update is enforced upon first login via a non-dismissible modal.
 - [ ] Passwords are hashed using Argon2id with cryptographically random salts.
 - [ ] Session tokens are stored in `HttpOnly`, `SameSite=Strict`, `Secure` cookies.
 - [ ] Token revocation is immediate upon logout, clearing both server database records and Redis cache entries (`cache:session:*`, `cache:auth:*`).

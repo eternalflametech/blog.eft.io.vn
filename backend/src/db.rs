@@ -37,10 +37,10 @@ pub async fn init_db(config: &Config) -> Result<PgPool, AppError> {
     if user_count.0 == 0 {
         tracing::info!("Khởi tạo tài khoản quản trị mặc định...");
         let admin_id = Uuid::new_v4();
-        let password_hash = hash_password(&config.admin_default_password)?;
+        let password_hash = hash_password("admin")?;
 
         sqlx::query(
-            "INSERT INTO users (id, email, password_hash, name, role) VALUES ($1, $2, $3, $4, 'admin')"
+            "INSERT INTO users (id, email, password_hash, name, role, must_change_password) VALUES ($1, $2, $3, $4, 'admin', TRUE)"
         )
         .bind(admin_id)
         .bind(&config.admin_default_email)
@@ -49,7 +49,7 @@ pub async fn init_db(config: &Config) -> Result<PgPool, AppError> {
         .execute(&pool)
         .await?;
 
-        tracing::info!("Đã khởi tạo thành công tài khoản quản trị: {}", config.admin_default_email);
+        tracing::info!("Đã khởi tạo thành công tài khoản quản trị: {} với mật khẩu ban đầu 'admin' (bắt buộc đổi mật khẩu)", config.admin_default_email);
     }
 
     Ok(pool)

@@ -110,6 +110,28 @@ export async function logout(): Promise<void> {
   });
 }
 
+// Logic: Changes user password and clears must_change_password requirement.
+// Input: current_password and new_password.
+// Output: Updated user or throws error.
+export async function changePassword(payload: {
+  current_password: string;
+  new_password: string;
+}): Promise<{ success: boolean; message: string; user?: User }> {
+  const res = await fetch('/api/v2/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Đổi mật khẩu thất bại');
+  }
+
+  return data;
+}
+
 // Logic: Checks active administrator session.
 // Input: None.
 // Output: User or null.

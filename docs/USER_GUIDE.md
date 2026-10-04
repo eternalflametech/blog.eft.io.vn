@@ -18,7 +18,8 @@ Hệ thống áp dụng cơ chế phân quyền nghiêm ngặt nhằm đảm b�
 
 ### 2.2. Đăng Nhập & Bảo Mật Phiên
 - **Đường dẫn đăng nhập:** [`/admin/login`](http://localhost:3000/admin/login).
-- **Tài khoản mặc định:** Email `admin@eft.io.vn` / Mật khẩu `admin123456_ChangeMeInProd!`.
+- **Tài khoản khởi tạo ban đầu:** Email `admin@eft.io.vn` / Mật khẩu khởi tạo ban đầu `admin` (không đặt trong `.env` để bảo đảm an toàn).
+- **Bắt buộc đổi mật khẩu khi vừa đăng nhập:** Ngay sau khi đăng nhập bằng mật khẩu mặc định `admin`, hệ thống sẽ kích hoạt bảng modal bắt buộc thay đổi mật khẩu. Quản trị viên chỉ có thể tiếp tục sử dụng hệ thống sau khi đã thiết lập mật khẩu mới (tối thiểu 6 ký tự).
 - **Cơ chế phiên:** Phiên làm việc duy trì qua cookie bảo mật `HttpOnly`, `SameSite=Strict`, tự động mã hóa và hủy ngay lập tức trên Redis khi đăng xuất.
 - **Chính sách đăng ký:** Tính năng tự đăng ký công khai bị khóa mặc định để ngăn chặn tài khoản giả mạo.
 

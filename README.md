@@ -269,29 +269,29 @@ REDIS_URL=redis://redis:6379
 SESSION_SECRET=change_me_to_a_random_32_byte_string_for_production
 ENABLE_PUBLIC_REGISTRATION=false
 
-# Tài khoản Quản trị viên khởi tạo ban đầu
+# Default Initial Administrator Seed (Applied on initial DB migration)
 ADMIN_DEFAULT_EMAIL=admin@eft.io.vn
-ADMIN_DEFAULT_PASSWORD=admin123456_ChangeMeInProd!
 ADMIN_DEFAULT_NAME=Quản Trị Viên EFT
 
-# Siêu dữ liệu Trang web
+# Frontend Public Metadata
 NEXT_PUBLIC_SITE_NAME="Eternal Flame Tech Blog"
 NEXT_PUBLIC_SITE_DESCRIPTION="Trí Tuệ Nhân Tạo & Robotics - CLB Eternal Flame Tech, THPT Chuyên Nguyễn Thị Minh Khai, Cần Thơ"
 ```
 
-### 5.4. Tài khoản Quản trị Mặc định ban đầu
+### 5.4. Tài khoản Quản trị Mặc định ban đầu & Cơ chế Bắt buộc Đổi Mật khẩu
 
-Khi triển khai lần đầu tiên từ cơ sở dữ liệu trống, migration SQLx sẽ tự động tạo tài khoản quản trị viên gốc:
+Khi triển khai lần đầu tiên từ cơ sở dữ liệu trống, hệ thống tự động khởi tạo tài khoản quản trị viên gốc với mật khẩu ban đầu là `admin`. Mật khẩu này **không** đặt trong `.env` để bảo đảm an toàn:
 
 | Thông tin | Giá trị khởi tạo |
 | :--- | :--- |
 | **Email đăng nhập** | `admin@eft.io.vn` |
-| **Mật khẩu khởi tạo** | `admin123456_ChangeMeInProd!` |
+| **Mật khẩu khởi tạo ban đầu** | `admin` |
 | **Vai trò** | `admin` (Quản trị viên toàn quyền) |
 | **Trang đăng nhập** | [`http://localhost:3000/admin/login`](http://localhost:3000/admin/login) |
 
-> [!WARNING]
-> Vui lòng đổi mật khẩu tài khoản quản trị ngay sau khi triển khai hệ thống lên môi trường production tại trang Quản lý tài khoản (`/admin/users`) hoặc thông qua lệnh `eft-cli`.
+> [!IMPORTANT]
+> **Cơ chế Bắt buộc Đổi Mật khẩu (Force Password Change):**  
+> Ngay sau khi Quản trị viên đăng nhập bằng mật khẩu khởi tạo ban đầu (`admin`), hệ thống sẽ lập tức hiển thị bảng modal bắt buộc thay đổi mật khẩu (không thể bỏ qua). Quản trị viên chỉ có thể tiếp tục sử dụng hệ thống sau khi đã nhập mật khẩu hiện tại (`admin`) và thiết lập mật khẩu mới an toàn (tối thiểu 6 ký tự).
 
 ### 5.5. Danh mục REST API v2
 
@@ -303,6 +303,7 @@ Mọi yêu cầu gọi API có quyền hạn đều cần gửi kèm cookie `eft
 | `POST` | `/api/v2/auth/login` | Công khai | Đăng nhập nhận cookie bảo mật `HttpOnly` |
 | `POST` | `/api/v2/auth/logout` | Đã đăng nhập | Đăng xuất và hủy phiên làm việc trên Redis |
 | `GET` | `/api/v2/auth/me` | Đã đăng nhập | Lấy thông tin tài khoản hiện đang đăng nhập |
+| `POST` | `/api/v2/auth/change-password` | Đã đăng nhập | Đổi mật khẩu tài khoản và xóa cờ bắt buộc đổi |
 | `GET` | `/api/v2/posts` | Công khai | Lấy danh sách bài viết phân trang (mặc định 20 bài) |
 | `GET` | `/api/v2/posts/{slug}` | Công khai | Lấy chi tiết bài viết đã xuất bản theo đường dẫn slug |
 | `GET` | `/api/v2/tags` | Công khai | Lấy danh sách thẻ bài viết kèm số lượng |

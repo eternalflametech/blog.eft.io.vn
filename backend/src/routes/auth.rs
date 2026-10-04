@@ -4,7 +4,7 @@
 
 use axum::{
     extract::State,
-    http::{header::SET_COOKIE, HeaderMap, HeaderValue, StatusCode},
+    http::{header::{AUTHORIZATION, COOKIE, SET_COOKIE}, HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
     Json,
 };
@@ -12,11 +12,12 @@ use serde_json::json;
 
 use crate::{
     auth::{
-        create_session, destroy_session, hash_password, middleware::RequireAdmin,
-        verify_password, SESSION_COOKIE_NAME,
+        create_session, destroy_session, hash_password,
+        middleware::RequireAuth,
+        update_session, verify_password, SESSION_COOKIE_NAME,
     },
     error::AppError,
-    models::{LoginRequest, RegisterRequest, User, UserResponse},
+    models::{ChangePasswordRequest, LoginRequest, RegisterRequest, User, UserResponse},
     state::SharedState,
 };
 
@@ -28,7 +29,7 @@ pub async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let user = sqlx::query_as::<_, User>(
-        "SELECT id, email, password_hash, name, role, created_at, updated_at FROM users WHERE email = $1"
+        "SELECT id, email, password_hash, name, role, must_change_password, created_at, updated_at FROM users WHERE email = $1"
     )
     .bind(payload.email.trim())
     .fetch_optional(&state.pool)
@@ -110,16 +111,95 @@ pub async fn logout(
     ))
 }
 
-// Logic: Returns currently authenticated administrator user profile.
-// Input: RequireAdmin extractor.
+// Logic: Returns currently authenticated user profile.
+// Input: RequireAuth extractor.
 // Output: UserResponse JSON.
 pub async fn me(
-    RequireAdmin(user): RequireAdmin,
+    RequireAuth(user): RequireAuth,
 ) -> impl IntoResponse {
     Json(json!({
         "success": true,
         "user": user
     }))
+}
+
+// Logic: Changes user password and clears must_change_password flag in database and session cache.
+// Input: SharedState, HTTP HeaderMap, RequireAuth extractor, and ChangePasswordRequest JSON.
+// Output: Success message JSON with updated UserResponse or validation error.
+pub async fn change_password(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    RequireAuth(current_user): RequireAuth,
+    Json(payload): Json<ChangePasswordRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let user = sqlx::query_as::<_, User>(
+        "SELECT id, email, password_hash, name, role, must_change_password, created_at, updated_at FROM users WHERE id = $1"
+    )
+    .bind(current_user.id)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if !verify_password(&payload.current_password, &user.password_hash)? {
+        return Err(AppError::BadRequest("Mật khẩu hiện tại không chính xác".to_string()));
+    }
+
+    let trimmed_new = payload.new_password.trim();
+    if trimmed_new.len() < 6 {
+        return Err(AppError::BadRequest("Mật khẩu mới phải có tối thiểu 6 ký tự".to_string()));
+    }
+
+    if trimmed_new == "admin" || trimmed_new == payload.current_password {
+        return Err(AppError::BadRequest("Mật khẩu mới không được trùng mật khẩu mặc định hoặc mật khẩu cũ".to_string()));
+    }
+
+    let new_password_hash = hash_password(trimmed_new)?;
+
+    sqlx::query(
+        "UPDATE users SET password_hash = $1, must_change_password = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $2"
+    )
+    .bind(&new_password_hash)
+    .bind(user.id)
+    .execute(&state.pool)
+    .await?;
+
+    let mut updated_user = current_user.clone();
+    updated_user.must_change_password = false;
+
+    let mut token = None;
+    if let Some(cookie_header) = headers.get(COOKIE) {
+        if let Ok(cookie_str) = cookie_header.to_str() {
+            for pair in cookie_str.split(';') {
+                let mut kv = pair.trim().splitn(2, '=');
+                if let (Some(k), Some(v)) = (kv.next(), kv.next()) {
+                    if k == SESSION_COOKIE_NAME {
+                        token = Some(v.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if token.is_none() {
+        if let Some(auth_header) = headers.get(AUTHORIZATION) {
+            if let Ok(auth_str) = auth_header.to_str() {
+                if let Some(stripped) = auth_str.strip_prefix("Bearer ") {
+                    token = Some(stripped.trim().to_string());
+                }
+            }
+        }
+    }
+
+    if let Some(tok) = token {
+        let mut redis = state.redis.clone();
+        let _ = update_session(&mut redis, &tok, &updated_user).await;
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "message": "Đã đổi mật khẩu thành công. Bạn có thể tiếp tục sử dụng hệ thống.",
+        "user": updated_user
+    })))
 }
 
 // Logic: Handles user registration guarded by ENABLE_PUBLIC_REGISTRATION toggle.
@@ -139,7 +219,7 @@ pub async fn register(
     let user_id = uuid::Uuid::new_v4();
 
     sqlx::query(
-        "INSERT INTO users (id, email, password_hash, name, role) VALUES ($1, $2, $3, $4, 'admin')"
+        "INSERT INTO users (id, email, password_hash, name, role, must_change_password) VALUES ($1, $2, $3, $4, 'admin', FALSE)"
     )
     .bind(user_id)
     .bind(payload.email.trim())

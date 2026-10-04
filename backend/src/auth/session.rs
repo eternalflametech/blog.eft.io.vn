@@ -48,3 +48,15 @@ pub async fn destroy_session(
     let key = format!("session:{token}");
     delete_cached(conn, &key).await
 }
+
+// Logic: Updates active user session in Redis.
+// Input: Mutable Redis connection manager, token slice, and UserResponse reference.
+// Output: Result indicating session cache update status.
+pub async fn update_session(
+    conn: &mut ConnectionManager,
+    token: &str,
+    user: &UserResponse,
+) -> Result<(), AppError> {
+    let key = format!("session:{token}");
+    set_cached(conn, &key, user, SESSION_TTL_SECONDS).await
+}

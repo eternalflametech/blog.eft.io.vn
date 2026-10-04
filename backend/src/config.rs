@@ -14,7 +14,6 @@ pub struct Config {
     pub max_upload_size_bytes: usize,
     pub enable_public_registration: bool,
     pub admin_default_email: String,
-    pub admin_default_password: String,
     pub admin_default_name: String,
 }
 
@@ -53,9 +52,6 @@ impl Config {
         let admin_default_email = env::var("ADMIN_DEFAULT_EMAIL")
             .unwrap_or_else(|_| "admin@eft.io.vn".to_string());
 
-        let admin_default_password = env::var("ADMIN_DEFAULT_PASSWORD")
-            .unwrap_or_else(|_| "admin123456_ChangeMeInProd!".to_string());
-
         let admin_default_name = env::var("ADMIN_DEFAULT_NAME")
             .unwrap_or_else(|_| "Quản Trị Viên EFT".to_string());
 
@@ -68,7 +64,6 @@ impl Config {
             max_upload_size_bytes,
             enable_public_registration,
             admin_default_email,
-            admin_default_password,
             admin_default_name,
         }
     }

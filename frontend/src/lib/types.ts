@@ -51,6 +51,7 @@ export interface User {
   email: string;
   name: string;
   role: string;
+  must_change_password?: boolean;
   created_at: string;
 }
 
