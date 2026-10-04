@@ -407,6 +407,6 @@ Chúng tôi hoan nghênh mọi đóng góp từ cộng đồng học thuật và
 
 ## 8. Bản Quyền & Giấy Phép (License)
 
-- **Bản quyền:** © 2024–2026 **Eternal Flame Tech (EFT)**. Mọi quyền được bảo lưu.
+- **Bản quyền:** © 2026 trở về sau **Eternal Flame Tech (EFT)**. Mọi quyền được bảo lưu.
 - **Tổ chức:** Câu lạc bộ AI & Robotics Trường THPT Chuyên Nguyễn Thị Minh Khai, Cần Thơ, Việt Nam.
 - **Giấy phép:** Mã nguồn được phát hành theo giấy phép [MIT License](LICENSE).

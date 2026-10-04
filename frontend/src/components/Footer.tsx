@@ -50,7 +50,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-8 border-t border-zinc-900 pt-6 text-center text-xs text-zinc-400">
-          © {new Date().getFullYear()} Eternal Flame Tech. Mọi quyền được bảo lưu.
+          © 2026 trở về sau Eternal Flame Tech. Mọi quyền được bảo lưu.
         </div>
       </div>
     </footer>
