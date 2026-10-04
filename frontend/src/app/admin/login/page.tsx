@@ -38,7 +38,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div className="relative mx-auto mb-4 h-16 w-16 overflow-hidden rounded-xl border border-violet-500/30">
             <Image
-              src="/logo.png"
+              src="/logo.jpg"
               alt="Eternal Flame Tech Logo"
               fill
               className="object-cover"

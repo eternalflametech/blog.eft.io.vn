@@ -102,7 +102,7 @@ export default function Header() {
           <Link href="/" className="flex items-center gap-3 no-underline shrink-0 group">
             <div className="relative h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg border border-white/15 shadow-md group-hover:border-violet-500/50 transition-colors">
               <Image
-                src="/logo.png"
+                src="/logo.jpg"
                 alt="Logo CLB AI & Robotics Eternal Flame Tech"
                 fill
                 priority

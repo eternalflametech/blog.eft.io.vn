@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blog.eft.io.vn';
   const canonicalUrl = `${siteUrl}/${post.slug}`;
-  const ogImage = post.cover_image || `${siteUrl}/logo.png`;
+  const ogImage = post.cover_image || `${siteUrl}/logo.jpg`;
   const tagKeywords = post.tags?.map((t) => t.name) || [];
 
   return {
@@ -108,7 +108,7 @@ export default async function PostPage({ params }: PostPageProps) {
     '@type': 'BlogPosting',
     headline: post.title,
     description: post.excerpt,
-    image: post.cover_image ? [post.cover_image] : [`${siteUrl}/logo.png`],
+    image: post.cover_image ? [post.cover_image] : [`${siteUrl}/logo.jpg`],
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at,
     inLanguage: 'vi-VN',
@@ -130,7 +130,7 @@ export default async function PostPage({ params }: PostPageProps) {
       name: 'Eternal Flame Tech',
       logo: {
         '@type': 'ImageObject',
-        url: `${siteUrl}/logo.png`,
+        url: `${siteUrl}/logo.jpg`,
       },
     },
     mainEntityOfPage: {

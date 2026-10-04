@@ -39,9 +39,9 @@ export const metadata: Metadata = {
       'Nền tảng chia sẻ học thuật và nghiên cứu AI & Robotics của CLB Eternal Flame Tech.',
     images: [
       {
-        url: '/logo.png',
-        width: 800,
-        height: 800,
+        url: '/logo.jpg',
+        width: 1024,
+        height: 1024,
         alt: 'Eternal Flame Tech Logo',
       },
     ],
@@ -51,11 +51,11 @@ export const metadata: Metadata = {
     title: 'Eternal Flame Tech Blog',
     description:
       'CLB Trí Tuệ Nhân Tạo & Robotics - THPT Chuyên Nguyễn Thị Minh Khai, Cần Thơ',
-    images: ['/logo.png'],
+    images: ['/logo.jpg'],
   },
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: '/logo.jpg',
+    apple: '/logo.jpg',
   },
 };
 

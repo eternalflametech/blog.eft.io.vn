@@ -34,14 +34,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const posts = postsData.items;
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blog.eft.io.vn';
+
   // JSON-LD Organization Structured Data
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'Eternal Flame Tech',
     alternateName: 'EFT Club',
-    url: 'https://blog.eft.io.vn',
-    logo: 'https://blog.eft.io.vn/logo.png',
+    url: siteUrl,
+    logo: `${siteUrl}/logo.jpg`,
     description:
       'Câu lạc bộ Trí Tuệ Nhân Tạo & Robotics chính thức của Trường THPT Chuyên Nguyễn Thị Minh Khai, TP. Cần Thơ.',
     address: {
