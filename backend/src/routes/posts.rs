@@ -47,25 +47,24 @@ pub async fn list_posts(
     Query(filter): Query<PostQueryFilter>,
 ) -> Result<impl IntoResponse, AppError> {
     let page = filter.page.unwrap_or(1).max(1);
-    let limit = filter.limit.unwrap_or(10).clamp(1, 50);
+    let limit = filter.limit.unwrap_or(20).clamp(1, 50);
     let offset = (page - 1) * limit;
 
-    let cache_key = if filter.tag.is_none() && page == 1 && limit == 10 {
-        Some("cache:posts:page:1".to_string())
-    } else {
-        None
-    };
+    let cache_key = format!(
+        "cache:posts:list:{}:{}:{}",
+        filter.tag.as_deref().unwrap_or("all"),
+        page,
+        limit
+    );
 
     let mut redis = state.redis.clone();
-    if let Some(ref k) = cache_key {
-        if let Some(cached) = get_cached::<PaginatedPosts>(&mut redis, k).await {
-            return Ok(Json(cached));
-        }
+    if let Some(cached) = get_cached::<PaginatedPosts>(&mut redis, &cache_key).await {
+        return Ok(Json(cached));
     }
 
     let (posts, total) = if let Some(ref tag_slug) = filter.tag {
         let total_count: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(DISTINCT p.id) 
+            r#"SELECT COUNT(p.id) 
                FROM posts p 
                JOIN post_tags pt ON p.id = pt.post_id 
                JOIN tags t ON pt.tag_id = t.id 
@@ -75,23 +74,27 @@ pub async fn list_posts(
         .fetch_one(&state.pool)
         .await?;
 
-        let rows: Vec<PostRow> = sqlx::query_as(
-            r#"SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.status, p.published_at, p.created_at, u.name as author_name 
-               FROM posts p 
-               JOIN users u ON p.author_id = u.id 
-               JOIN post_tags pt ON p.id = pt.post_id 
-               JOIN tags t ON pt.tag_id = t.id 
-               WHERE p.status = 'published' AND t.slug = $1 
-               ORDER BY p.published_at DESC NULLS LAST 
-               LIMIT $2 OFFSET $3"#
-        )
-        .bind(tag_slug)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await?;
+        if total_count.0 == 0 {
+            (Vec::new(), 0)
+        } else {
+            let rows: Vec<PostRow> = sqlx::query_as(
+                r#"SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.status, p.published_at, p.created_at, u.name as author_name 
+                   FROM posts p 
+                   JOIN users u ON p.author_id = u.id 
+                   JOIN post_tags pt ON p.id = pt.post_id 
+                   JOIN tags t ON pt.tag_id = t.id 
+                   WHERE p.status = 'published' AND t.slug = $1 
+                   ORDER BY p.published_at DESC NULLS LAST 
+                   LIMIT $2 OFFSET $3"#
+            )
+            .bind(tag_slug)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pool)
+            .await?;
 
-        (rows, total_count.0)
+            (rows, total_count.0)
+        }
     } else {
         let total_count: (i64,) = sqlx::query_as(
             "SELECT COUNT(*) FROM posts WHERE status = 'published'"
@@ -99,20 +102,24 @@ pub async fn list_posts(
         .fetch_one(&state.pool)
         .await?;
 
-        let rows: Vec<PostRow> = sqlx::query_as(
-            r#"SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.status, p.published_at, p.created_at, u.name as author_name 
-               FROM posts p 
-               JOIN users u ON p.author_id = u.id 
-               WHERE p.status = 'published' 
-               ORDER BY p.published_at DESC NULLS LAST 
-               LIMIT $1 OFFSET $2"#
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await?;
+        if total_count.0 == 0 {
+            (Vec::new(), 0)
+        } else {
+            let rows: Vec<PostRow> = sqlx::query_as(
+                r#"SELECT p.id, p.slug, p.title, p.excerpt, p.cover_image, p.status, p.published_at, p.created_at, u.name as author_name 
+                   FROM posts p 
+                   JOIN users u ON p.author_id = u.id 
+                   WHERE p.status = 'published' 
+                   ORDER BY p.published_at DESC NULLS LAST 
+                   LIMIT $1 OFFSET $2"#
+            )
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pool)
+            .await?;
 
-        (rows, total_count.0)
+            (rows, total_count.0)
+        }
     };
 
     // Batch query tags for returned posts
@@ -168,9 +175,7 @@ pub async fn list_posts(
         total_pages,
     };
 
-    if let Some(ref k) = cache_key {
-        let _ = set_cached(&mut redis, k, &result, 60).await;
-    }
+    let _ = set_cached(&mut redis, &cache_key, &result, 180).await;
 
     Ok(Json(result))
 }

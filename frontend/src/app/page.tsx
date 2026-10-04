@@ -1,26 +1,35 @@
-// Logic: Public home page rendering club hero banner, recent articles, tag filters, and organization schema.
-// Input: Server request context.
+// Logic: Public home page rendering club hero banner, recent articles with 20-post pagination, tag filters, and organization schema.
+// Input: Server request context and searchParams with page.
 // Output: Server-rendered public landing page (ISR revalidate 60s).
 
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import Pagination from '@/components/Pagination';
 import PostCard from '@/components/PostCard';
 import { getPosts, getTags } from '@/lib/api';
 import { Tag } from '@/lib/types';
 
 export const revalidate = 60;
 
-export default async function HomePage() {
+interface HomePageProps {
+  searchParams?: Promise<{ page?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const resolvedParams = searchParams ? await searchParams : {};
+  const currentPage = Math.max(1, parseInt(resolvedParams.page || '1', 10) || 1);
+  const limit = 20;
+
   let postsData;
   let tags: Tag[] = [];
 
   try {
     [postsData, tags] = await Promise.all([
-      getPosts({ page: 1, limit: 9 }),
+      getPosts({ page: currentPage, limit }),
       getTags(),
     ]);
-  } catch (err) {
-    postsData = { items: [], total: 0, page: 1, limit: 9, total_pages: 1 };
+  } catch {
+    postsData = { items: [], total: 0, page: currentPage, limit, total_pages: 1 };
   }
 
   const posts = postsData.items;
@@ -133,11 +142,20 @@ export default async function HomePage() {
             Hiện tại chưa có bài viết nào được xuất bản. Vui lòng quay lại sau!
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={postsData.total_pages}
+              basePath="/"
+              anchor="articles"
+            />
+          </>
         )}
 
 
