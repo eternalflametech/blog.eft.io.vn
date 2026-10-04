@@ -44,11 +44,11 @@ This document outlines production security invariants for the Eternal Flame Tech
 - [ ] The Rust backend Axum service runs inside an isolated Docker bridge network.
 - [ ] Backend port 8080 is not exposed to the public host or external network.
 - [ ] The Next.js server acts as the sole public gateway on port 3000, proxying `/api/v2/*` requests internally.
-- [ ] Production deployments route external traffic through Cloudflare Tunnel with Edge SSL termination.
+- [ ] Production deployments route external traffic through Cloudflare Zero Trust Tunnel (`cloudflared:2026.9.3`) with Edge SSL termination, leaving zero open inbound ports on the host.
 - [ ] Unnecessary operating system packages are omitted from Docker runtime images (Alpine or distroless).
 
 ### 2.6. Secrets Management
-- [ ] Zero secrets, private keys, database passwords, or API tokens are tracked in version control.
+- [ ] Zero secrets, private keys, database passwords, or API tokens (including `CLOUDFLARE_TUNNEL_TOKEN`) are tracked in version control.
 - [ ] `.env` and local environment files are included in `.gitignore`.
 - [ ] `.env.example` documents all required environment variable names with dummy placeholders.
 - [ ] Secrets are injected via Docker Compose secret mounts or host environment variables.

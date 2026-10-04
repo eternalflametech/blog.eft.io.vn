@@ -193,13 +193,20 @@ docker compose exec backend eft-cli admin \
 
 ### 5.1. Kiến trúc Hệ thống Docker-First
 
-Toàn bộ giải pháp vận hành theo chính sách cổng đơn (**Single-Port Outport Policy**), chỉ công khai duy nhất cổng `:3000` của Next.js Gateway ra ngoài môi trường Internet:
+Toàn bộ giải pháp vận hành theo chính sách cổng đơn (**Single-Port Outport Policy**), chỉ công khai duy nhất cổng `:3000` của Next.js Gateway ra ngoài môi trường Internet, hoặc định tuyến an toàn qua Cloudflare Zero Trust Tunnel:
 
 ```
-[ Internet / Khách truy cập / Cloudflare Tunnel ]
-                       │
-                       ▼ :3000
-┌──────────────────────────────────────────────────────────────┐
+[ Internet / Khách truy cập ]
+             │
+             ├──► [ Cloudflare Edge SSL ]
+             │           │
+             │           ▼ (Encrypted Tunnel)
+             │   ┌────────────────────────────────┐
+             │   │    cloudflared (eft-net)       │
+             │   └───────────────┬────────────────┘
+             │                   │ http://frontend:3000
+             ▼ :3000 (Local Dev) │
+┌────────────────────────────────┴─────────────────────────────┐
 │                    frontend (Next.js 15)                     │
 │  - Render HTML phía máy chủ (SSR / ISR)                      │
 │  - Phân trang 20 bài viết / trang, tối ưu Core Web Vitals    │
@@ -240,7 +247,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Kiểm tra trạng thái sẵn sàng của cả 4 container:
+Kiểm tra trạng thái sẵn sàng của các container:
 ```bash
 docker compose ps
 ```
@@ -276,6 +283,11 @@ ADMIN_DEFAULT_NAME=Quản Trị Viên EFT
 # Frontend Public Metadata
 NEXT_PUBLIC_SITE_NAME="Eternal Flame Tech Blog"
 NEXT_PUBLIC_SITE_DESCRIPTION="Trí Tuệ Nhân Tạo & Robotics - CLB Eternal Flame Tech, THPT Chuyên Nguyễn Thị Minh Khai, Cần Thơ"
+
+# Cấu hình Cloudflare Tunnel (Zero Trust)
+# Để kích hoạt dịch vụ tunnel, bỏ dấu # trước COMPOSE_PROFILES và điền CLOUDFLARE_TUNNEL_TOKEN
+# COMPOSE_PROFILES=tunnel
+CLOUDFLARE_TUNNEL_TOKEN=
 ```
 
 ### 5.4. Tài khoản Quản trị Mặc định ban đầu & Cơ chế Bắt buộc Đổi Mật khẩu
@@ -293,7 +305,36 @@ Khi triển khai lần đầu tiên từ cơ sở dữ liệu trống, hệ th�
 > **Cơ chế Bắt buộc Đổi Mật khẩu (Force Password Change):**  
 > Ngay sau khi Quản trị viên đăng nhập bằng mật khẩu khởi tạo ban đầu (`admin`), hệ thống sẽ lập tức hiển thị bảng modal bắt buộc thay đổi mật khẩu (không thể bỏ qua). Quản trị viên chỉ có thể tiếp tục sử dụng hệ thống sau khi đã nhập mật khẩu hiện tại (`admin`) và thiết lập mật khẩu mới an toàn (tối thiểu 6 ký tự).
 
-### 5.5. Danh mục REST API v2
+### 5.5. Tích hợp Cloudflare Tunnel (`cloudflared` & Zero Trust)
+
+EFT Blog tích hợp sẵn container `cloudflared` kết nối trực tiếp với Cloudflare Zero Trust Edge Network, mang lại các lợi ích an ninh vượt trội:
+- **Zero Open Ports:** Không cần mở bất kỳ cổng nào trên modem / firewall máy chủ ra ngoài Internet.
+- **Ẩn IP Máy chủ gốc:** Mọi yêu cầu từ người dùng đều đi qua mạng CDN và WAF của Cloudflare.
+- **Tự động chứng chỉ SSL:** Cloudflare xử lý Edge SSL Termination an toàn.
+
+#### Cách cấu hình và khởi chạy:
+1. Tạo một Tunnel trong **Cloudflare Zero Trust Dashboard** (mục *Networks* > *Tunnels*).
+2. Lấy **Tunnel Token** được cấp từ Cloudflare.
+3. Trong tệp `.env`, bỏ dấu comment và điền token:
+   ```ini
+   COMPOSE_PROFILES=tunnel
+   CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoi...dien_token_o_day...
+   ```
+4. Cấu hình **Public Hostname** trên Cloudflare Tunnel trỏ về cổng nội bộ Next.js Gateway:
+   - **Service Type:** `HTTP`
+   - **URL:** `frontend:3000` (hoặc `eft-frontend:3000`)
+5. Khởi chạy toàn bộ hệ thống kèm Cloudflare Tunnel:
+   ```bash
+   docker compose up -d
+   # Hoặc chỉ định rõ profile qua dòng lệnh:
+   docker compose --profile tunnel up -d
+   ```
+6. Kiểm tra nhật ký kết nối của Tunnel:
+   ```bash
+   docker compose logs -f cloudflared
+   ```
+
+### 5.6. Danh mục REST API v2
 
 Mọi yêu cầu gọi API có quyền hạn đều cần gửi kèm cookie `eft_session` hoặc tiêu đề `Authorization: Bearer <token>`:
 
@@ -321,13 +362,13 @@ Mọi yêu cầu gọi API có quyền hạn đều cần gửi kèm cookie `eft
 | `PUT` | `/api/v2/admin/users/{id}` | Admin | Cập nhật thông tin, vai trò hoặc mật khẩu thành viên |
 | `DELETE` | `/api/v2/admin/users/{id}` | Admin | Xóa tài khoản thành viên (có bảo vệ chống tự xóa) |
 
-### 5.6. Hiệu năng & Tối ưu hóa Bộ nhớ đệm (Cache-Aside)
+### 5.7. Hiệu năng & Tối ưu hóa Bộ nhớ đệm (Cache-Aside)
 - **Đệm nhị phân Bincode:** Sử dụng thư viện `bincode` tuần tự hóa các danh sách bài viết và lưu vào Redis theo khóa động `cache:posts:list:{tag}:{page}:{limit}` với thời gian sống TTL 180 giây. Thời gian trích xuất đệm đạt dưới **0.2 ms**.
 - **Cơ chế Early-Return:** Khi đếm tổng số bài viết trả về `0`, hệ thống ngắt truy vấn lập tức và trả về mảng rỗng `[]`, tiết kiệm 100% tài nguyên CPU & I/O cơ sở dữ liệu.
 - **Xóa đệm tự động:** Bất kỳ thao tác thêm, sửa, đổi trạng thái hoặc xóa bài viết nào đều tự động kích hoạt lệnh quét và xóa mẫu khóa đệm `cache:posts:*` trên Redis.
 - **Nén dữ liệu đa tầng:** Sử dụng Tower-HTTP `CompressionLayer` tự động nén các phản hồi HTTP vượt quá 1 KB bằng thuật toán Brotli hoặc Gzip.
 
-### 5.7. Bảo mật & Kiểm soát Rủi ro (Security Baseline)
+### 5.8. Bảo mật & Kiểm soát Rủi ro (Security Baseline)
 - **Compile-time SQL Parameterization:** 100% câu lệnh SQL đều sử dụng macro `sqlx::query!` hoặc `sqlx::query_as!`, loại bỏ hoàn toàn nguy cơ SQL Injection.
 - **Băm mật khẩu Argon2id:** Sử dụng thuật toán băm Argon2id với muối ngẫu nhiên chống tấn công brute-force.
 - **Chống XSS & Khử độc Markdown:** Sử dụng bộ lọc HTML nghiêm ngặt, chặn các thẻ thực thi mã `<script>`, `<iframe>` và các sự kiện nội dòng `onclick`.

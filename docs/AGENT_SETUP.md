@@ -45,6 +45,7 @@ On cold start, database migrations automatically seed the root administrator:
 - **Role:** `admin` (Root Administrator)
 - **Security Rule:** Upon login, the system renders a non-dismissible modal requiring an immediate password change.
 - **Database State:** Clean zero-state (ready for production content).
+- **Cloudflare Tunnel (Optional):** Enable by setting `COMPOSE_PROFILES=tunnel` and `CLOUDFLARE_TUNNEL_TOKEN` in `.env`, or passing `--profile tunnel` to docker compose.
 
 ---
 

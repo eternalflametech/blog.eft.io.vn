@@ -38,13 +38,20 @@ Access points:
 ---
 
 ## 3. Docker Compose Service Layout
-The system defines four core services connected via a dedicated bridge network:
+The system defines four core application services plus an optional Cloudflare Zero Trust tunnel service, all connected via a dedicated bridge network (`eft-net`):
 
 ```
-[ Internet / Host :3000 ]
-           │
-           ▼
-┌───────────────────────────────────────────────┐
+[ Internet / Edge Traffic ]
+            │
+            ├──► [ Cloudflare Edge SSL ]
+            │           │
+            │           ▼ (Encrypted Zero Trust Tunnel)
+            │   ┌────────────────────────────────┐
+            │   │    cloudflared (eft-net)       │
+            │   └───────────────┬────────────────┘
+            │                   │ http://frontend:3000
+            ▼ :3000 (Local Dev) │
+┌───────────────────────────────┴───────────────┐
 │              frontend (Next.js)               │
 │  - Port 3000 exposed to host                  │
 │  - API proxy rewrites /api/v2/* to backend    │
@@ -72,10 +79,33 @@ The system defines four core services connected via a dedicated bridge network:
 - `backend`: Builds from multi-stage Dockerfile, compiles release binary in builder stage, runs as non-root `appuser` in minimal runtime image.
 - `postgres`: Official PostgreSQL image with declared healthcheck (`pg_isready -U postgres`).
 - `redis`: Official Redis image with declared healthcheck (`redis-cli ping`).
+- `cloudflared`: Official pinned image `cloudflare/cloudflared:2026.9.3` managed via Docker Compose profile (`profiles: ["tunnel"]`). Runs non-root tunnel connecting securely to Cloudflare Edge.
 
 ---
 
-## 4. Named Volumes & State Persistence
+## 4. Cloudflare Tunnel Operations (Zero Trust)
+To publish the application securely without opening inbound ports:
+1. Obtain the **Tunnel Token** from the Cloudflare Zero Trust Dashboard (*Networks* > *Tunnels*).
+2. Configure `.env`:
+   ```bash
+   COMPOSE_PROFILES=tunnel
+   CLOUDFLARE_TUNNEL_TOKEN=<your-token>
+   ```
+3. Set Cloudflare Public Hostname origin to `http://frontend:3000` (or `http://eft-frontend:3000`).
+4. Start with tunnel:
+   ```bash
+   docker compose up -d
+   # Or explicitly invoke profile via CLI:
+   docker compose --profile tunnel up -d
+   ```
+5. Inspect tunnel health and logs:
+   ```bash
+   docker compose logs -f cloudflared
+   ```
+
+---
+
+## 5. Named Volumes & State Persistence
 All persistent application state lives strictly in declared named volumes:
 - `eft_pgdata`: Stores PostgreSQL database records and relational tables.
 - `eft_redisdata`: Stores Redis cache snapshots and session data.
@@ -85,7 +115,7 @@ Anonymous volumes and host bind mounts into the source repository tree for persi
 
 ---
 
-## 5. Secrets Management & Environment Configuration
+## 6. Secrets Management & Environment Configuration
 Configuration is injected dynamically via environment variables:
 - **Environment Variables:** Loaded via `.env` file or Docker Compose environment blocks.
 - **Git Exclusion:** `.env`, `.env*.local`, and Docker secret files are strictly excluded via `.gitignore`.
@@ -93,7 +123,7 @@ Configuration is injected dynamically via environment variables:
 
 ---
 
-## 6. Dev-Host Sudo Policy
+## 7. Dev-Host Sudo Policy
 On the dedicated Debian 13 development host:
 - `sudo` is available without restriction to manage the container host environment (e.g. `sudo apt-get install -y docker-ce`, `sudo usermod -aG docker $USER`, managing systemd units, configuring local firewalls).
 - `sudo` must **NEVER** be embedded into Dockerfiles, Compose files, Makefile targets, or project automation scripts.

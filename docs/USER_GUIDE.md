@@ -126,3 +126,13 @@ Thư viện tài nguyên cho phép tải lên hình ảnh và tài liệu minh h
 ### 7.2. Lọc Theo Chủ Đề (Topic Filter)
 - Thanh lọc chủ đề phía trên danh sách bài viết chỉ hiển thị các thẻ tag có chứa ít nhất 1 bài viết đã xuất bản.
 - Nhấp vào từng chủ đề để xem danh sách bài viết chuyên biệt theo chủ đề đó.
+
+---
+
+## 8. Vận Hành Mạng & Kết Nối Cloudflare Tunnel
+
+Hệ thống hỗ trợ xuất bản an toàn ra Internet qua Cloudflare Zero Trust Tunnel mà không cần mở cổng modem mạng (Port Forwarding):
+1. **Lấy Token:** Tạo Tunnel trên Cloudflare Zero Trust Dashboard và sao chép chuỗi mã hóa Tunnel Token.
+2. **Cấu hình trên máy chủ:** Mở tệp `.env`, kích hoạt `COMPOSE_PROFILES=tunnel` và dán mã token vào biến `CLOUDFLARE_TUNNEL_TOKEN`.
+3. **Định tuyến máy chủ:** Trên Cloudflare Dashboard, cấu hình Public Hostname trỏ tới URL dịch vụ nội bộ `http://frontend:3000`.
+4. **Khởi chạy:** Chạy lệnh `docker compose up -d` (hoặc `docker compose --profile tunnel up -d`). Dịch vụ `cloudflared` sẽ tự động kết nối và mã hóa toàn bộ dữ liệu truyền nhận.
